@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 
 
 def initialize():
-    register_tornaodo_hook()
-    regist_redis_client_hook()
-    regist_urllib_hook()
+    try:
+        register_tornaodo_hook()
+        logger.info("tornado init ok")
+        regist_redis_client_hook()
+        logger.info("redis init ok")
+        regist_urllib_hook()
+        logger.info("urllib init ok")
+    except Exception as e:
+        logger.exception("%s", e)
+
+
+if __name__ == "__main__":
+    initialize()

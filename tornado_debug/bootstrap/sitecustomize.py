@@ -5,6 +5,7 @@ import imp
 import logging
 
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 # We need to import the original sitecustomize.py file if it exists. We

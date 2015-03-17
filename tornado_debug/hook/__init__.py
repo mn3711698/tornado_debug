@@ -2,6 +2,7 @@
 import functools
 import time
 import logging
+from collections import deque
 
 from jinja2 import Environment, PackageLoader
 
@@ -30,6 +31,8 @@ def regist_wrap_module_func_hook(module_str, attribute, wrapper_factory):
 class DataCollecter(object):
 
     instances = []
+    history = deque()
+    max_history = 5
 
     def __init__(self, name, id):
         DataCollecter.instances.append(self)
@@ -60,6 +63,11 @@ class DataCollecter(object):
             data['count'] = 0
             data['time'] = 0
 
+    @classmethod
+    def clear_all(cls):
+        for instance in cls.instances:
+            instance.clear()
+
     def render_data(self):
         func = []
         for name, data in self.hooked_func.items():
@@ -82,3 +90,21 @@ class DataCollecter(object):
         panels = [instance.get_panel() for instance in cls.instances]
         template = jinja_env.get_template('index.html')
         return template.render(panels=panels)
+
+    @classmethod
+    def get_history(cls, key):
+        for key, value in cls.history:
+            if key == key:
+                return value
+        return ""
+
+    @classmethod
+    def set_history(cls, key, content):
+        if len(cls.history) >= cls.max_history:
+            cls.history.popleft()
+        cls.history.append((key, content))
+
+    @classmethod
+    def get_content_to_add(cls, history_key):
+        template = jinja_env.get_template("handle.html")
+        return template.render(history_key=history_key)

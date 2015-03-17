@@ -3,6 +3,7 @@ import functools
 import logging
 import inspect
 from collections import deque
+import time
 import re
 
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
@@ -70,7 +71,7 @@ tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
 def httpserver_httpconnection_on_headers_hook(original):
     @functools.wraps(original)
     def wrapper(*args, **kwargs):
-        tornado_data_collecter.clear()
+        DataCollecter.clear_all()
         original(*args, **kwargs)
     return wrapper
 
@@ -78,15 +79,19 @@ def httpserver_httpconnection_on_headers_hook(original):
 def web_request_handler_finish_hook(original):
     @functools.wraps(original)
     def wrapper(self, chunk=None):
-        if is_ajax_request(self.request) or not is_html_response(self):
+        if is_ajax_request(self.request) or not is_html_response(self) or getattr(self, 'is_tnDebug_inner', False):
             return original(self, chunk)
         else:
             tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
+            history_key = int(time.time())
+            DataCollecter.set_history(history_key, DataCollecter.render())
+
+            content_to_add = DataCollecter.get_content_to_add(history_key)
             insert_before_tag = r'</body>'
             pattern = re.escape(insert_before_tag)
             bits = re.split(pattern, chunk, flags=re.IGNORECASE)
             if len(bits) > 1:
-                bits[-2] += DataCollecter.render()
+                bits[-2] += content_to_add
                 chunk = insert_before_tag.join(bits)
                 if "Content-Length" in self._headers:
                     self.set_header("Content-Length", len(chunk))
