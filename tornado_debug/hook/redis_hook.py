@@ -1,14 +1,19 @@
 # coding:utf8
 import functools
 
-from . import DataCollecter, regist_wrap_module_func_hook
+from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
 
 
 class RedisDataCollecter(DataCollecter):
-    pass
+
+    def render_data(self):
+        func = super(RedisDataCollecter, self).render_data()
+        panel = {'func': func}
+        template = jinja_env.get_template('redis.html')
+        return template.render(panel=panel)
 
 
-redis_data_collecter = RedisDataCollecter("Redis")
+redis_data_collecter = RedisDataCollecter("Redis", "Redis")
 
 
 _redis_client_methods = ('bgrewriteaof', 'bgsave', 'client_kill',

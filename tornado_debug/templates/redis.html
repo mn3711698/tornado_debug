@@ -1,0 +1,19 @@
+<h3 class="page-header">redis操作</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>name</th>
+            <th>count</th>
+            <th>time(ms)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in panel.func %}
+        <tr>
+            <th>{{ item.name }}</th>
+            <th>{{ item.count }}</th>
+            <th>{{ item.time }}</th>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

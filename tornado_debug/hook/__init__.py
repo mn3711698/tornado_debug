@@ -1,13 +1,16 @@
 # coding: utf8
 import functools
 import time
-import json
 import logging
+
+from jinja2 import Environment, PackageLoader
 
 from tornado_debug.utils import resolve_path
 from tornado_debug.import_hook import register_import_hook
 
 logger = logging.getLogger(__name__)
+
+jinja_env = Environment(loader=PackageLoader('tornado_debug', 'templates'))
 
 
 def wrap_module_func(module, attribute, wrapper_factory):
@@ -28,12 +31,13 @@ class DataCollecter(object):
 
     instances = []
 
-    def __init__(self, name):
+    def __init__(self, name, id):
         DataCollecter.instances.append(self)
         # record function invoke count and time in all
         # eg: self.hooked_func = {"func_name": {'count':1, 'time': 200}, ...}
         self.hooked_func = {}
         self.name = name
+        self.id = id
 
     def wrap_function(self, func, full_name):
         @functools.wraps(func)
@@ -44,7 +48,7 @@ class DataCollecter(object):
             data['start'] = time.time()
             self.hooked_func[full_name] = data
             result = func(*args, **kwargs)
-            data['time'] = round(data['time'] + (time.time() - data['start'])*1000, 2)
+            data['time'] = data['time'] + (time.time() - data['start'])
             data['running'] = False
             return result
 
@@ -57,11 +61,24 @@ class DataCollecter(object):
             data['time'] = 0
 
     def render_data(self):
-        return self.hooked_func
+        func = []
+        for name, data in self.hooked_func.items():
+            if data['running']:
+                data['time'] = data['time'] + (time.time() - data['start'])
+            data['time'] = round(data['time']*1000, 2)
+            func.append({'name': name, 'count': data['count'], 'time': data['time']})
+        func = sorted(func, key=lambda x: x['time'], reverse=True)
+        return func
+
+    def get_panel(self):
+        return {'name': self.name, 'id': self.id, 'content': self.render_data()}
 
     @classmethod
     def render(cls):
-        result = {}
-        for collecter in cls.instances:
-            result[collecter.name] = collecter.render_data()
-        return json.dumps(result)
+        # result = {}
+        # for collecter in cls.instances:
+        #    result[collecter.name] = collecter.render_data()
+        # return json.dumps(result)
+        panels = [instance.get_panel() for instance in cls.instances]
+        template = jinja_env.get_template('index.html')
+        return template.render(panels=panels)

@@ -1,0 +1,84 @@
+#tnDebug .panelsBody {
+    display: none;
+    position: fixed;
+    margin: 0;
+    top: 0;
+    right: 0px;
+    bottom: 0;
+    left: 0px;
+    background-color: #eee;
+    color: #666;
+    z-index: 100000000;
+}
+
+#tnDebug .panelsTitle {
+    position: absolute;
+    background-color: #ffc;
+    color: #666;
+    padding-left: 20px;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 50px;
+}
+
+#tnDebug .panelsBody .tnDebugClose {
+    display: block;
+    position: absolute;
+    top: 4px;
+    right: 15px;
+    height: 40px;
+    width: 40px;
+    background: no-repeat center center;
+}
+
+#tnDebug .panelsContent {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: auto;
+    padding: 5px 0 0 20px;
+}
+
+#tnDebug .panelsContent .panels {
+    height: 100%;
+    overflow: auto;
+    display: block;
+    padding: 0 10px 0 0;
+}
+
+#tnDebug #tnDebugHandle {
+    position: fixed;
+    background-color: #fff;
+    border: 1px solid #111;
+    top: 30px;
+    right: 0;
+    z-index: 100000000;
+    opacity: 0.75;
+}
+
+#tnDebug #tnDebugShowButton {
+    display: block;
+    height: 75px;
+    width: 30px;
+    border-right: none;
+    border-bottom: 4px solid #fff;
+    border-top: 4px solid #fff;
+    border-left: 4px solid #fff;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-decoration: none;
+    text-align: center;
+    text-indent: -999999px;
+    background: #000 no-repeat left center;
+    opacity: 0.5;
+}
+
+@media screen {
+    #tnDebug {
+        display: none;
+    }
+}

@@ -1,22 +1,38 @@
 # coding: utf8
 import functools
 import logging
-import time
 import inspect
 from collections import deque
+import re
 
-from . import regist_wrap_module_func_hook, DataCollecter
+from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
+from .tornado_urls import urls
 
 logger = logging.getLogger(__name__)
+
+_HTML_TYPES = ('text/html', 'application/xhtml+xml')
+
+
+def is_ajax_request(request):
+    if 'X-Requested-With' in request.headers:
+        return True
+    return False
+
+
+def is_html_response(response):
+    content_type = response._headers.get('Content-Type', '').split(';')[0]
+    if content_type not in _HTML_TYPES:
+        return False
+    return True
 
 
 class TornadoDataCollecter(DataCollecter):
 
-    def __init__(self, name):
+    def __init__(self, name, id):
         self.time_use = None
         # record hooked class
         self.hooked_class = set()
-        super(TornadoDataCollecter, self).__init__(name)
+        super(TornadoDataCollecter, self).__init__(name, id)
 
     def hook_user_handler_func(self, handler_class):
         if handler_class in self.hooked_class:
@@ -42,14 +58,13 @@ class TornadoDataCollecter(DataCollecter):
             self.hooked_class.add(handler_class)
 
     def render_data(self):
-        for name, data in tornado_data_collecter.hooked_func.items():
-            if data['running']:
-                data['time'] = round(data['time'] + (time.time() - data['start'])*1000, 2)
-        result = {'reqeust time': self.time_use, 'func': self.hooked_func}
-        return result
+        func = super(TornadoDataCollecter, self).render_data()
+        panel = {'time_use': self.time_use, 'func': func}
+        template = jinja_env.get_template('tornado.html')
+        return template.render(panel=panel)
 
 
-tornado_data_collecter = TornadoDataCollecter("Tornado")
+tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
 
 
 def httpserver_httpconnection_on_headers_hook(original):
@@ -62,28 +77,39 @@ def httpserver_httpconnection_on_headers_hook(original):
 
 def web_request_handler_finish_hook(original):
     @functools.wraps(original)
-    def wrapper(*args, **kwargs):
-        tornado_data_collecter.time_use = round(args[0].request.request_time()*1000, 2)
-        original(args[0], DataCollecter.render())
-
+    def wrapper(self, chunk=None):
+        if is_ajax_request(self.request) or not is_html_response(self):
+            return original(self, chunk)
+        else:
+            tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
+            insert_before_tag = r'</body>'
+            pattern = re.escape(insert_before_tag)
+            bits = re.split(pattern, chunk, flags=re.IGNORECASE)
+            if len(bits) > 1:
+                bits[-2] += DataCollecter.render()
+                chunk = insert_before_tag.join(bits)
+                if "Content-Length" in self._headers:
+                    self.set_header("Content-Length", len(chunk))
+            return original(self, chunk)
     return wrapper
 
 
 def web_application_init_hook(original):
 
     @functools.wraps(original)
-    def wrapper(*args, **kwargs):
-        handlers = []
-        if len(args) > 1:
-            handlers = args[1]
-        elif kwargs:
-            handlers = kwargs.get('handlers')
+    def wrapper(self, handlers=None, *args,  **kwargs):
+        #handlers = []
+        #if len(args) > 1:
+        #    handlers = args[1]
+        #elif kwargs:
+        #    handlers = kwargs.get('handlers')
+        handlers.extend(urls)
         for spec in handlers:
             assert isinstance(spec, tuple)
             assert len(spec) in (2, 3)
             handler_class = spec[1]
             tornado_data_collecter.hook_user_handler_func(handler_class)
-        return original(*args, **kwargs)
+        return original(self, handlers, *args, **kwargs)
 
     return wrapper
 

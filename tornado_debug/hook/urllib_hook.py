@@ -3,7 +3,7 @@ import functools
 import six
 import time
 
-from . import DataCollecter, regist_wrap_module_func_hook
+from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
 
 
 class UrlLibDataCollecter(DataCollecter):
@@ -29,8 +29,14 @@ class UrlLibDataCollecter(DataCollecter):
 
         return wrapper
 
+    def render_data(self):
+        func = super(UrlLibDataCollecter, self).render_data()
+        panel = {'urls': func}
+        template = jinja_env.get_template('urllib.html')
+        return template.render(panel=panel)
 
-urllib23_data_collecter = UrlLibDataCollecter('UrlLib23')
+
+urllib23_data_collecter = UrlLibDataCollecter('UrlLib', 'urllib')
 
 
 def regist_urllib_hook():
