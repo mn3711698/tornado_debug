@@ -18,7 +18,6 @@ logger.addHandler(logging.StreamHandler())
 # the search, and then load what was found.
 
 boot_directory = os.path.dirname(__file__)
-root_directory = os.path.dirname(os.path.dirname(boot_directory))
 path = list(sys.path)
 
 if boot_directory in path:
@@ -31,15 +30,8 @@ except ImportError:
 else:
     imp.load_module('sitecustomize', file, pathname, description)
 
-if root_directory not in sys.path:
-        sys.path.insert(0, root_directory)
 
 from tornado_debug import agent
-
-try:
-    del sys.path[sys.path.index(root_directory)]
-except Exception:
-    pass
 
 # Finally initialize the agent.
 
