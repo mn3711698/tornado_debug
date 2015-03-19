@@ -18,6 +18,7 @@ logger.addHandler(logging.StreamHandler())
 # the search, and then load what was found.
 
 boot_directory = os.path.dirname(__file__)
+#root_directory = os.path.dirname(os.path.dirname(boot_directory))
 path = list(sys.path)
 
 if boot_directory in path:
@@ -32,6 +33,9 @@ else:
 
 
 from tornado_debug import agent
+
+#if root_directory in sys.path:
+#    del sys.path[sys.path.index(root_directory)]
 
 # Finally initialize the agent.
 

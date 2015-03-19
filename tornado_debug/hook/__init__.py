@@ -59,9 +59,7 @@ class DataCollecter(object):
 
     def clear(self):
         self.time_use = 0
-        for func_name, data in self.hooked_func.items():
-            data['count'] = 0
-            data['time'] = 0
+        self.hooked_func = {}
 
     @classmethod
     def clear_all(cls):

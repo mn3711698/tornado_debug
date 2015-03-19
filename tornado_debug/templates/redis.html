@@ -1,19 +1,49 @@
-<h3 class="page-header">redis操作</h3>
-<table class="table">
-    <thead>
-        <tr>
-            <th>name</th>
-            <th>count</th>
-            <th>time(ms)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in panel.func %}
-        <tr>
-            <th>{{ item.name }}</th>
-            <th>{{ item.count }}</th>
-            <th>{{ item.time }}</th>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-5" id="tn-redis-left">
+            <h3 class="page-header">redis操作</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>name</th>
+                        <th>count</th>
+                        <th>time(ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in panel.func %}
+                    <tr>
+                        <th>{{ item.name }}</th>
+                        <th>{{ item.count }}</th>
+                        <th>{{ item.time }}</th>
+                    </tr>
+                    <div id="tn-{{ item.name }}" style="display: none;">
+                        {% for detail in panel.commands[item.name] %}
+                        <div class="detail-row">
+                        <div>{{ detail.args }}</div>
+                        <div>{{ detail.count }}</div>
+                        <div>{{ detail.time }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-6 col-md-offset-1" id="tn-redis-right">
+            <h3 class="page-header">Detail</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>name</th>
+                        <th>count</th>
+                        <th>time(ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div id='redis-json' style='display: none;'></div>

@@ -8,7 +8,7 @@ setup(
     author="shaolianbo",
     author_email="lianboshao@sohu-inc.com",
     packages=['tornado_debug', "tornado_debug.bootstrap", "tornado_debug.hook"],
-    package_data={'tornado_debug': ['static/css/*', 'templates/*']},
+    package_data={'tornado_debug': ['static/css/*', 'static/js/*', 'templates/*']},
     scripts=["tor-debug"],
     long_description="""debug tornado web application."""
 )
