@@ -58,7 +58,6 @@ class DataCollecter(object):
         return wrapper
 
     def clear(self):
-        self.time_use = 0
         self.hooked_func = {}
 
     @classmethod
@@ -91,9 +90,9 @@ class DataCollecter(object):
 
     @classmethod
     def get_history(cls, key):
-        for key, value in cls.history:
-            if key == key:
-                return value
+        for k, v in cls.history:
+            if key == k:
+                return v
         return ""
 
     @classmethod

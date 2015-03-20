@@ -5,6 +5,7 @@ import inspect
 from collections import deque
 import time
 import re
+import json
 
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
@@ -34,6 +35,7 @@ class TornadoDataCollecter(DataCollecter):
         # record hooked class
         self.hooked_class = set()
         super(TornadoDataCollecter, self).__init__(name, id)
+        self.current_node = self.hooked_func
 
     def hook_user_handler_func(self, handler_class):
         if handler_class in self.hooked_class:
@@ -58,11 +60,51 @@ class TornadoDataCollecter(DataCollecter):
                     handler_class_deq.append(base_class)
             self.hooked_class.add(handler_class)
 
+    def wrap_function(self, func, full_name):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            parent_node = self.current_node
+            data = parent_node.get(full_name, None) or {'count': 0, "time": 0, "running": False, "start": 0, 'children': {}}
+            data['count'] += 1
+            data['running'] = True
+            data['start'] = time.time()
+            parent_node[full_name] = data
+            try:
+                self.current_node = data['children']
+                result = func(*args, **kwargs)
+            except Exception as e:
+                raise e
+            finally:
+                data['time'] = data['time'] + (time.time() - data['start'])
+                data['running'] = False
+                self.current_node = parent_node
+
+            return result
+
+        return wrapper
+
     def render_data(self):
-        func = super(TornadoDataCollecter, self).render_data()
-        panel = {'time_use': self.time_use, 'func': func}
+        sorted_result = self._sort_result(self.hooked_func)
+        panel = {'time_use': self.time_use, 'func': json.dumps(sorted_result)}
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=panel)
+
+    def _sort_result(self, funcs):
+        funcs_list = []
+        for name, data in funcs.items():
+            if data['running']:
+                data['time'] = data['time'] + (time.time() - data['start'])
+            data['time'] = round(data['time']*1000, 2)
+            funcs_list.append({'name': name, 'count': data['count'], 'time': data['time'], 'children': data['children']})
+        funcs_list = sorted(funcs_list, key=lambda x: x['time'], reverse=True)
+
+        for item in funcs_list:
+            item['children'] = self._sort_result(item['children'])
+
+        return funcs_list
+
+    def clear(self):
+        self.current_node = self.hooked_func = {}
 
 
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
