@@ -14,7 +14,7 @@ python setup.py install
 
 ### USAGE
 
-tor-debug <python command>
+tor-debug [python command]
 
 eg: tor-debug python -m wcms_front.server --profile=dev
 
