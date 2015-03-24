@@ -72,8 +72,8 @@ class TornadoDataCollecter(DataCollecter):
             try:
                 self.current_node = data['children']
                 result = func(*args, **kwargs)
-            except Exception as e:
-                raise e
+            except Exception:
+                raise
             finally:
                 data['time'] = data['time'] + (time.time() - data['start'])
                 data['running'] = False
@@ -131,10 +131,15 @@ def web_request_handler_finish_hook(original):
             content_to_add = DataCollecter.get_content_to_add(history_key)
             insert_before_tag = r'</body>'
             pattern = re.escape(insert_before_tag)
-            bits = re.split(pattern, chunk, flags=re.IGNORECASE)
-            if len(bits) > 1:
-                bits[-2] += content_to_add
-                chunk = insert_before_tag.join(bits)
+            if chunk:
+                bits = re.split(pattern, chunk, flags=re.IGNORECASE)
+                if len(bits) > 1:
+                    bits[-2] += content_to_add
+                    chunk = insert_before_tag.join(bits)
+                    if "Content-Length" in self._headers:
+                        self.set_header("Content-Length", len(chunk))
+            else:
+                chunk = content_to_add
                 if "Content-Length" in self._headers:
                     self.set_header("Content-Length", len(chunk))
             return original(self, chunk)

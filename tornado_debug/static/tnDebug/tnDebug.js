@@ -48,6 +48,30 @@ function init(){
             var jsonData = JSON.parse(tornadoData);
             $('#tornado-json').JSONView(jsonData, {collapsed: true, nl2br: true});
             $('#tornado-json').JSONView('expand', 1);
+
+            // when click childern + , expend all childern node
+            $('.collapser').bind('click', function(){
+                // this is the second event handler, so the text is '-'
+                if($(this).text() == '-'){
+                    var prop = $(this).siblings('span.prop');
+                    console.log(prop);
+                    if(prop.length<1){
+                        return;
+                    }
+                    var collapsible = $(this).siblings("ul.collapsible");
+                    if(collapsible.length < 1){
+                        return;
+                    }
+                    collapsible = collapsible[0];
+                    $(collapsible).children("li").each(function(){
+                        $(this).children("div.collapser").each(function(){
+                            if($(this).text()=="+"){
+                                $(this).click();
+                            }
+                        });
+                    });
+                }
+            });
         }
     };
 
