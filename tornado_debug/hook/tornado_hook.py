@@ -64,7 +64,7 @@ class TornadoDataCollecter(DataCollecter):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             parent_node = self.current_node
-            data = parent_node.get(full_name, None) or {'count': 0, "time": 0, "running": False, "start": 0, 'children': {}}
+            data = parent_node.get(full_name, {'count': 0, "time": 0, "running": False, "start": 0, 'children': {}})
             data['count'] += 1
             data['running'] = True
             data['start'] = time.time()

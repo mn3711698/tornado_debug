@@ -37,7 +37,7 @@ class DataCollecter(object):
     def __init__(self, name, id):
         DataCollecter.instances.append(self)
         # record function invoke count and time in all
-        # eg: self.hooked_func = {"func_name": {'count':1, 'time': 200}, ...}
+        # eg: self.hooked_func = {"func_name": {'count':1, 'time': 200, chilidren:{}}, ...}
         self.hooked_func = {}
         self.name = name
         self.id = id
