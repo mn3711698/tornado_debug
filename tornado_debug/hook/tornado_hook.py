@@ -36,6 +36,7 @@ class TornadoDataCollecter(DataCollecter):
         self.hooked_class = set()
         super(TornadoDataCollecter, self).__init__(name, id)
         self.current_node = self.hooked_func
+        self.flat_result = {}
 
     def hook_user_handler_func(self, handler_class):
         if handler_class in self.hooked_class:
@@ -85,7 +86,8 @@ class TornadoDataCollecter(DataCollecter):
 
     def render_data(self):
         sorted_result = self._sort_result(self.hooked_func)
-        panel = {'time_use': self.time_use, 'func': json.dumps(sorted_result)}
+        sorted_flat_result = self._sort_flat_result()
+        panel = {'time_use': self.time_use, 'func': json.dumps(sorted_result), 'flat': sorted_flat_result}
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=panel)
 
@@ -94,6 +96,12 @@ class TornadoDataCollecter(DataCollecter):
         for name, data in funcs.items():
             if data['running']:
                 data['time'] = data['time'] + (time.time() - data['start'])
+            # construtct flat result
+            flat_data = self.flat_result.get(name, {"count": 0, 'time': 0})
+            flat_data['count'] += data['count']
+            flat_data['time'] += data['time']
+            self.flat_result[name] = flat_data
+
             data['time'] = round(data['time']*1000, 2)
             funcs_list.append({'name': name, 'count': data['count'], 'time': data['time'], 'children': data['children']})
         funcs_list = sorted(funcs_list, key=lambda x: x['time'], reverse=True)
@@ -102,6 +110,13 @@ class TornadoDataCollecter(DataCollecter):
             item['children'] = self._sort_result(item['children'])
 
         return funcs_list
+
+    def _sort_flat_result(self):
+        result_list = []
+        for name, data in self.flat_result.items():
+            data['time'] = round(data['time']*1000, 2)
+            result_list.append({'name': name, 'count': data['count'], 'time': data['time']})
+        return sorted(result_list, key=lambda x: x['time'], reverse=True)
 
     def clear(self):
         self.current_node = self.hooked_func = {}

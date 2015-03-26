@@ -48,7 +48,6 @@ function init(){
             var jsonData = JSON.parse(tornadoData);
             $('#tornado-json').JSONView(jsonData, {collapsed: true, nl2br: true});
             $('#tornado-json').JSONView('expand', 1);
-
             // when click childern + , expend all childern node
             $('.collapser').bind('click', function(){
                 // this is the second event handler, so the text is '-'
@@ -72,6 +71,31 @@ function init(){
                     });
                 }
             });
+            
+           function changeFace(){
+                if($('#tornado-table').css('display')=='none'){
+                    $('#tornado-json').hide();
+                    $('#tornado-table').show();
+                }else{
+                    $('#tornado-table').hide();
+                    $('#tornado-json').show();
+                }
+           }
+
+           $('#showTable').click(function(){
+                if($('#tornado-table').css('display')=='none'){
+                    changeFace();
+                } 
+           });
+
+           $('#showJson').click(function(){
+                if($('#tornado-json').css('display')=='none'){
+                    changeFace();
+                } 
+           });
+
+           $('#tornado-table').show();
+            
         }
     };
 
