@@ -6,6 +6,7 @@ from collections import deque
 import time
 import re
 import json
+import six
 
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
@@ -140,6 +141,7 @@ def web_request_handler_finish_hook(original):
         if is_ajax_request(self.request) or not is_html_response(self) or getattr(self, 'is_tnDebug_inner', False):
             return original(self, chunk)
         else:
+            
             tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
             history_key = int(time.time())
             DataCollecter.set_history(history_key, DataCollecter.render())
@@ -148,13 +150,16 @@ def web_request_handler_finish_hook(original):
             insert_before_tag = r'</body>'
             pattern = re.escape(insert_before_tag)
             if chunk:
-                bits = re.split(pattern, chunk, flags=re.IGNORECASE)
-                if len(bits) > 1:
-                    bits[-2] += content_to_add
-                    chunk = insert_before_tag.join(bits)
-                else:
-                    # TODO: 对于非html的body，期望有更好的解决方案
+                if isinstance(chunk, dict):
                     chunk = content_to_add
+                else:
+                    bits = re.split(pattern, chunk, flags=re.IGNORECASE)
+                    if len(bits) > 1:
+                        bits[-2] += content_to_add
+                        chunk = insert_before_tag.join(bits)
+                    else:
+                        # TODO: 对于非html的body，期望有更好的解决方案
+                        chunk = content_to_add
                 if "Content-Length" in self._headers:
                     self.set_header("Content-Length", len(chunk))
             else:
