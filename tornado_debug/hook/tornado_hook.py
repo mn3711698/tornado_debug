@@ -141,7 +141,6 @@ def web_request_handler_finish_hook(original):
         if is_ajax_request(self.request) or not is_html_response(self) or getattr(self, 'is_tnDebug_inner', False):
             return original(self, chunk)
         else:
-            
             tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
             history_key = int(time.time())
             DataCollecter.set_history(history_key, DataCollecter.render())
