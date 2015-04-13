@@ -120,6 +120,7 @@ class TornadoDataCollecter(DataCollecter):
 
     def clear(self):
         self.current_node = self.hooked_func = {}
+        self.flat_result = {}
 
 
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
@@ -165,11 +166,6 @@ def web_application_init_hook(original):
 
     @functools.wraps(original)
     def wrapper(self, handlers=None, *args,  **kwargs):
-        #handlers = []
-        #if len(args) > 1:
-        #    handlers = args[1]
-        #elif kwargs:
-        #    handlers = kwargs.get('handlers')
         handlers.extend(urls)
         for spec in handlers:
             assert isinstance(spec, tuple)
