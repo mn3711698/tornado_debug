@@ -152,8 +152,11 @@ def web_request_handler_finish_hook(original):
                 if len(bits) > 1:
                     bits[-2] += content_to_add
                     chunk = insert_before_tag.join(bits)
-                    if "Content-Length" in self._headers:
-                        self.set_header("Content-Length", len(chunk))
+                else:
+                    # TODO: 对于非html的body，期望有更好的解决方案
+                    chunk = content_to_add
+                if "Content-Length" in self._headers:
+                    self.set_header("Content-Length", len(chunk))
             else:
                 chunk = content_to_add
                 if "Content-Length" in self._headers:
