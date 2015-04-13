@@ -6,7 +6,6 @@ from collections import deque
 import time
 import re
 import json
-import six
 
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
