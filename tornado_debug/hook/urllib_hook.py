@@ -23,7 +23,7 @@ class UrlLibDataCollecter(DataCollecter):
             data['start'] = time.time()
             self.hooked_func[url] = data
             result = func(*args, **kwargs)
-            data['time'] = round(data['time'] + (time.time() - data['start'])*1000, 2)
+            data['time'] += (time.time() - data['start'])
             data['running'] = False
             return result
 
