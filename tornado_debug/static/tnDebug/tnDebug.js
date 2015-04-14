@@ -49,7 +49,7 @@ function init(){
             $('#tornado-json').JSONView(jsonData, {collapsed: true, nl2br: true});
             $('#tornado-json').JSONView('expand', 1);
             // when click childern + , expend all childern node
-            $('.collapser').bind('click', function(){
+            $('#tornado-json .collapser').bind('click', function(){
                 // this is the second event handler, so the text is '-'
                 if($(this).text() == '-'){
                     var prop = $(this).siblings('span.prop');
@@ -96,11 +96,27 @@ function init(){
 
            $('#tornado-table').show();
             
+        },
+
+        responseInit: function(){
+            if($("#response-data").length === 0){
+                return;
+            }
+            try{
+                var respData = $('#response-data').text();
+                var respJson = JSON.parse(respData);
+                $('#response-json').JSONView(respJson, {collapsed: true, nl2br: true});
+                $('#respJson-json').JSONView('expand', 1);
+                $("#response-json").show();
+            }catch(e){
+                $("#response-data").show();
+            }
         }
     };
 
     initApi.tornadoInit();
     initApi.redisInit();
+    initApi.responseInit();
 }
 
 $(document).ready(init);

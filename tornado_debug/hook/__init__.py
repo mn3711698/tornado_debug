@@ -78,13 +78,21 @@ class DataCollecter(object):
     def get_panel(self):
         return {'name': self.name, 'id': self.id, 'content': self.render_data()}
 
+    @staticmethod
+    def get_response_panel(response):
+        template = jinja_env.get_template('response.html')
+        content = template.render(response=response)
+        return {'name': 'response', 'id': 'response', 'content': content}
+
     @classmethod
-    def render(cls):
+    def render(cls, response=None):
         # result = {}
         # for collecter in cls.instances:
         #    result[collecter.name] = collecter.render_data()
         # return json.dumps(result)
         panels = [instance.get_panel() for instance in cls.instances]
+        if response:
+            panels.append(cls.get_response_panel(response))
         template = jinja_env.get_template('index.html')
         return template.render(panels=panels)
 

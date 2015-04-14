@@ -162,28 +162,30 @@ def web_request_handler_finish_hook(original):
             return original(self, chunk)
         else:
             tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
-            history_key = int(time.time())
-            history_val = utf8(DataCollecter.render())
-            DataCollecter.set_history(history_key, history_val)
 
-            # 放入_write_buffer的必须时utf8编码过的
-            content_to_add = utf8(DataCollecter.get_content_to_add(history_key))
             if chunk:
                 self.write(chunk)
-            chunk = ("").join(self._write_buffer)
+            origin_response = chunk = ("").join(self._write_buffer)
 
             insert_before_tag = r'</body>'
             pattern = re.escape(insert_before_tag)
             if chunk:
                 bits = re.split(pattern, chunk, flags=re.IGNORECASE)
                 if len(bits) > 1:
+                    history_key = int(time.time())
+                    history_val = utf8(DataCollecter.render())
+                    DataCollecter.set_history(history_key, history_val)
+                    # 因为可能先write, 再finish. 为了插入结果， 只能手动修改_write_buffer
+                    # 放入_write_buffer的必须时utf8编码过的
+                    content_to_add = utf8(DataCollecter.get_content_to_add(history_key))
+
                     bits[-2] += content_to_add
                     chunk = insert_before_tag.join(bits)
                 else:
                     # TODO: 对于非html的body，期望有更好的解决方案
-                    chunk = history_val
+                    chunk = utf8(DataCollecter.render(origin_response))
             else:
-                chunk = history_val
+                chunk = utf8(DataCollecter.render(origin_response))
             if not is_html_response(self):
                 self.set_header('Content-Type', 'text/html')
             self._write_buffer = [chunk]
