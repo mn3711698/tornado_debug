@@ -28,6 +28,27 @@ def is_html_response(response):
     return True
 
 
+def is_json_response(response):
+    content_type = response._headers.get('Content-Type', '').split(';')[0]
+    return content_type == 'text/json'
+
+
+# copy from tornado/escape.py:157
+_UTF8_TYPES = (bytes, type(None))
+
+
+def utf8(value):
+    """Converts a string argument to a byte string.
+
+    If the argument is already a byte string or None, it is returned unchanged.
+    Otherwise it must be a unicode string and is encoded as utf8.
+    """
+    if isinstance(value, _UTF8_TYPES):
+        return value
+    assert isinstance(value, unicode)
+    return value.encode("utf-8")
+
+
 class TornadoDataCollecter(DataCollecter):
 
     def __init__(self, name, id):
@@ -137,34 +158,36 @@ def httpserver_httpconnection_on_headers_hook(original):
 def web_request_handler_finish_hook(original):
     @functools.wraps(original)
     def wrapper(self, chunk=None):
-        if is_ajax_request(self.request) or not is_html_response(self) or getattr(self, 'is_tnDebug_inner', False):
+        if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response) or getattr(self, 'is_tnDebug_inner', False):
             return original(self, chunk)
         else:
             tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
             history_key = int(time.time())
-            DataCollecter.set_history(history_key, DataCollecter.render())
+            history_val = utf8(DataCollecter.render())
+            DataCollecter.set_history(history_key, history_val)
 
-            content_to_add = DataCollecter.get_content_to_add(history_key)
+            # 放入_write_buffer的必须时utf8编码过的
+            content_to_add = utf8(DataCollecter.get_content_to_add(history_key))
+            if chunk:
+                self.write(chunk)
+            chunk = ("").join(self._write_buffer)
+
             insert_before_tag = r'</body>'
             pattern = re.escape(insert_before_tag)
             if chunk:
-                if isinstance(chunk, dict):
-                    chunk = content_to_add
+                bits = re.split(pattern, chunk, flags=re.IGNORECASE)
+                if len(bits) > 1:
+                    bits[-2] += content_to_add
+                    chunk = insert_before_tag.join(bits)
                 else:
-                    bits = re.split(pattern, chunk, flags=re.IGNORECASE)
-                    if len(bits) > 1:
-                        bits[-2] += content_to_add
-                        chunk = insert_before_tag.join(bits)
-                    else:
-                        # TODO: 对于非html的body，期望有更好的解决方案
-                        chunk = content_to_add
-                if "Content-Length" in self._headers:
-                    self.set_header("Content-Length", len(chunk))
+                    # TODO: 对于非html的body，期望有更好的解决方案
+                    chunk = history_val
             else:
-                chunk = content_to_add
-                if "Content-Length" in self._headers:
-                    self.set_header("Content-Length", len(chunk))
-            return original(self, chunk)
+                chunk = history_val
+            if not is_html_response(self):
+                self.set_header('Content-Type', 'text/html')
+            self._write_buffer = [chunk]
+            return original(self, None)
     return wrapper
 
 
