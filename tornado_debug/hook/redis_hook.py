@@ -40,10 +40,14 @@ class RedisDataCollecter(DataCollecter):
 
         return wrapper
 
-    def render_data(self):
-        func = super(RedisDataCollecter, self).render_data()
+    def raw_data(self):
+        func = super(RedisDataCollecter, self).raw_data()
         commands = self._format_commands_result()
         panel = {'func': func, 'commands': commands}
+        return panel
+
+    def render_data(self):
+        panel = self.raw_data()
         template = jinja_env.get_template('redis.html')
         return template.render(panel=panel)
 

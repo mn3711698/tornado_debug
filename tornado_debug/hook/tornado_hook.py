@@ -9,6 +9,7 @@ import json
 
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
+from tornado_debug import config
 
 logger = logging.getLogger(__name__)
 
@@ -105,12 +106,16 @@ class TornadoDataCollecter(DataCollecter):
 
         return wrapper
 
-    def render_data(self):
+    def raw_data(self):
         sorted_result = self._sort_result(self.hooked_func)
         sorted_flat_result = self._sort_flat_result()
-        panel = {'time_use': self.time_use, 'func': json.dumps(sorted_result), 'flat': sorted_flat_result}
+        return {'time_use': self.time_use, 'func': sorted_result, 'flat': sorted_flat_result}
+
+    def render_data(self):
+        raw_data = self.raw_data()
+        raw_data['func'] = json.dumps(raw_data['func'])
         template = jinja_env.get_template('tornado.html')
-        return template.render(panel=panel)
+        return template.render(panel=raw_data)
 
     def _sort_result(self, funcs):
         funcs_list = []
@@ -147,49 +152,62 @@ class TornadoDataCollecter(DataCollecter):
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
 
 
-def httpserver_httpconnection_on_headers_hook(original):
+def web_request_handler_execute_hook(original):
     @functools.wraps(original)
-    def wrapper(*args, **kwargs):
-        DataCollecter.clear_all()
-        original(*args, **kwargs)
+    def wrapper(self, transforms, *args, **kwargs):
+        if DataCollecter.running:
+            self.request.finish()
+        else:
+            DataCollecter.running = True
+            DataCollecter.clear_all()
+            original(*args, **kwargs)
     return wrapper
 
 
 def web_request_handler_finish_hook(original):
     @functools.wraps(original)
     def wrapper(self, chunk=None):
-        if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response) or getattr(self, 'is_tnDebug_inner', False):
-            return original(self, chunk)
-        else:
-            tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
-
-            if chunk:
-                self.write(chunk)
-            origin_response = chunk = ("").join(self._write_buffer)
-
-            insert_before_tag = r'</body>'
-            pattern = re.escape(insert_before_tag)
-            if chunk:
-                bits = re.split(pattern, chunk, flags=re.IGNORECASE)
-                if len(bits) > 1:
-                    history_key = int(time.time())
-                    history_val = utf8(DataCollecter.render())
-                    DataCollecter.set_history(history_key, history_val)
-                    # 因为可能先write, 再finish. 为了插入结果， 只能手动修改_write_buffer
-                    # 放入_write_buffer的必须时utf8编码过的
-                    content_to_add = utf8(DataCollecter.get_content_to_add(history_key))
-
-                    bits[-2] += content_to_add
-                    chunk = insert_before_tag.join(bits)
-                else:
-                    # TODO: 对于非html的body，期望有更好的解决方案
-                    chunk = utf8(DataCollecter.render(origin_response))
+        try:
+            if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response) or getattr(self, 'is_tnDebug_inner', False):
+                return original(self, chunk)
             else:
-                chunk = utf8(DataCollecter.render(origin_response))
-            if not is_html_response(self):
-                self.set_header('Content-Type', 'text/html')
-            self._write_buffer = [chunk]
-            return original(self, None)
+                tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
+
+                # server mode only response the debug data
+                if config.SERVER_MODE:
+                    self._write_buffer = []
+                    self.write(DataCollecter.json())
+                    return original(self)
+
+                if chunk:
+                    self.write(chunk)
+                origin_response = chunk = ("").join(self._write_buffer)
+
+                insert_before_tag = r'</body>'
+                pattern = re.escape(insert_before_tag)
+                if chunk:
+                    bits = re.split(pattern, chunk, flags=re.IGNORECASE)
+                    if len(bits) > 1:
+                        history_key = int(time.time())
+                        history_val = utf8(DataCollecter.render())
+                        DataCollecter.set_history(history_key, history_val)
+                        # 因为可能先write, 再finish. 为了插入结果， 只能手动修改_write_buffer
+                        # 放入_write_buffer的必须时utf8编码过的
+                        content_to_add = utf8(DataCollecter.get_content_to_add(history_key))
+
+                        bits[-2] += content_to_add
+                        chunk = insert_before_tag.join(bits)
+                    else:
+                        # TODO: 对于非html的body，期望有更好的解决方案
+                        chunk = utf8(DataCollecter.render(origin_response))
+                else:
+                    chunk = utf8(DataCollecter.render(origin_response))
+                if not is_html_response(self):
+                    self.set_header('Content-Type', 'text/html')
+                self._write_buffer = [chunk]
+                return original(self, None)
+        finally:
+            DataCollecter.running = False
     return wrapper
 
 
@@ -229,7 +247,7 @@ def gen_engine_hook(original):
 
 
 def register_tornaodo_hook():
-    regist_wrap_module_func_hook('tornado.httpserver', 'HTTPConnection._on_headers', httpserver_httpconnection_on_headers_hook)
+    regist_wrap_module_func_hook('tornado.web', 'RequestHandler._execute', web_request_handler_execute_hook)
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler.finish', web_request_handler_finish_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__init__', web_application_init_hook)
     regist_wrap_module_func_hook('tornado.web', 'asynchronous', web_asynchronous_hook)

@@ -33,6 +33,7 @@ class DataCollecter(object):
     instances = []
     history = deque()
     max_history = 5
+    running = False
 
     def __init__(self, name, id):
         DataCollecter.instances.append(self)
@@ -65,7 +66,10 @@ class DataCollecter(object):
         for instance in cls.instances:
             instance.clear()
 
-    def render_data(self):
+    def raw_data(self):
+        """
+        统计的原始数据
+        """
         func = []
         for name, data in self.hooked_func.items():
             if data['running']:
@@ -75,17 +79,30 @@ class DataCollecter(object):
         func = sorted(func, key=lambda x: x['time'], reverse=True)
         return func
 
+
+    def render_data(self):
+        """
+        渲染统计的数据
+        """
+        return raw_data
+
     def get_panel(self):
         return {'name': self.name, 'id': self.id, 'content': self.render_data()}
 
     @staticmethod
     def get_response_panel(response):
+        """
+        展示原始请求结果的pannel, 用于api的统计
+        """
         template = jinja_env.get_template('response.html')
         content = template.render(response=response)
         return {'name': 'response', 'id': 'response', 'content': content}
 
     @classmethod
     def render(cls, response=None):
+        """
+        渲染页面
+        """
         # result = {}
         # for collecter in cls.instances:
         #    result[collecter.name] = collecter.render_data()
@@ -95,6 +112,17 @@ class DataCollecter(object):
             panels.append(cls.get_response_panel(response))
         template = jinja_env.get_template('index.html')
         return template.render(panels=panels)
+
+    def get_json_panel(self):
+        return {'name': self.name, 'content': self.raw_data()}
+
+    @classmethod
+    def json(cls):
+        result = {}
+        for instance in cls.instances:
+            panel = instance.get_json_panel()
+            result[panel['name']] = panel['content']
+        return result
 
     @classmethod
     def get_history(cls, key):
