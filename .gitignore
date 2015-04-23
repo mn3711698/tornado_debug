@@ -1,0 +1,16 @@
+*~
+*.pyc
+.idea
+run
+.project
+.pydevproject
+atlassian-ide-plugin.xml
+build
+dist
+*.egg-info
+logs
+.noseids
+.coverage
+cover
+.env
+tags
