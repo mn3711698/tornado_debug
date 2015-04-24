@@ -160,7 +160,7 @@ def web_request_handler_execute_hook(original):
         else:
             DataCollecter.running = True
             DataCollecter.clear_all()
-            original(*args, **kwargs)
+            original(self, transforms, *args, **kwargs)
     return wrapper
 
 

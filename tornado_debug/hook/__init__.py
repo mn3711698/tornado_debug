@@ -79,12 +79,11 @@ class DataCollecter(object):
         func = sorted(func, key=lambda x: x['time'], reverse=True)
         return func
 
-
     def render_data(self):
         """
         渲染统计的数据
         """
-        return raw_data
+        return self.raw_data()
 
     def get_panel(self):
         return {'name': self.name, 'id': self.id, 'content': self.render_data()}
