@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name="tornado-debug",
-    version="{$version}",
+    version="${version}",
     description="debug tornado web application",
     author="shaolianbo",
     author_email="lianboshao@sohu-inc.com",
