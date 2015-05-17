@@ -40,7 +40,7 @@ class TransactionNode(object):
 
 class Transaction(object):
 
-    parent = current = root = {}
+    current = root = {}
 
     def __init__(self, full_name):
         self.full_name = full_name
@@ -73,14 +73,13 @@ class Transaction(object):
 
 class AsyncTransaction(Transaction):
     """
-    装饰Runner
+    装饰Runner.run时使用
     """
     def __init__(self, transaction):
         self.transaction = transaction
 
     def __enter__(self):
-        if self.transaction != self.current:
-            self.parent = self.current
+        self.parent = self.current
         self.set_current(self.transaction)
         self.transaction.resume()
         return self
@@ -88,3 +87,15 @@ class AsyncTransaction(Transaction):
     def __exit__(self, exc, value, tb):
         self.transaction.hang_up()
         self.set_current(self.parent)
+
+"""
+Runner __init__ 时附加属性_td_transaction
+
+Runner.run
+   tempt_parent = Transaction.current
+   Transaction.set_current(_td_transaction)
+   _td_transaction.resume()
+   run
+   _td_transaction.hang_up()
+   Transaction.set_current(tempt_parent)
+"""
