@@ -10,6 +10,7 @@ import json
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
+from tornado_debug.api.transaction import Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,6 @@ class TornadoDataCollecter(DataCollecter):
         # record hooked class
         self.hooked_class = set()
         super(TornadoDataCollecter, self).__init__(name, id)
-        self.current_node = self.hooked_func
         self.flat_result = {}
 
     def hook_user_handler_func(self, handler_class):
@@ -86,24 +86,11 @@ class TornadoDataCollecter(DataCollecter):
     def wrap_function(self, func, full_name):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            parent_node = self.current_node
-            data = parent_node.get(full_name, {'count': 0, "time": 0, "running": False, "start": 0, 'children': {}})
-            data['count'] += 1
-            data['running'] = True
-            data['start'] = time.time()
-            parent_node[full_name] = data
-            try:
-                self.current_node = data['children']
+            with Transaction(full_name) as trans:
+                trans.resume()
                 result = func(*args, **kwargs)
-            except Exception:
-                raise
-            finally:
-                data['time'] = data['time'] + (time.time() - data['start'])
-                data['running'] = False
-                self.current_node = parent_node
-
+                trans.hang_up()
             return result
-
         return wrapper
 
     def raw_data(self):
@@ -117,19 +104,20 @@ class TornadoDataCollecter(DataCollecter):
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=raw_data)
 
-    def _sort_result(self, funcs):
+    def _sort_result(self):
         funcs_list = []
-        for name, data in funcs.items():
-            if data['running']:
-                data['time'] = data['time'] + (time.time() - data['start'])
+        for name, node in Transaction.root.items():
+            if node.is_running:
+                node.stop()
             # construtct flat result
             flat_data = self.flat_result.get(name, {"count": 0, 'time': 0})
-            flat_data['count'] += data['count']
-            flat_data['time'] += data['time']
+            flat_data['count'] += node.count
+            flat_data['time'] += node.time
             self.flat_result[name] = flat_data
 
-            data['time'] = round(data['time']*1000, 2)
-            funcs_list.append({'name': name, 'count': data['count'], 'time': data['time'], 'children': data['children']})
+            node.time = round(node.time*1000, 2)
+
+            funcs_list.append({'name': name, 'count': node.count, 'time': node.time, 'children': node.children})
         funcs_list = sorted(funcs_list, key=lambda x: x['time'], reverse=True)
 
         for item in funcs_list:
@@ -145,8 +133,8 @@ class TornadoDataCollecter(DataCollecter):
         return sorted(result_list, key=lambda x: x['time'], reverse=True)
 
     def clear(self):
-        self.current_node = self.hooked_func = {}
         self.flat_result = {}
+        Transaction.clear()
 
 
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
