@@ -5,7 +5,7 @@ import time
 class TransactionNode(object):
     """
     一次函数调用只使用一次start , stop
-    start , stop 之间有多次resume, 和 hangup
+    对于异步函数，start , stop 之间有多次resume, 和 hangup
     """
 
     def __init__(self, name):
@@ -15,24 +15,31 @@ class TransactionNode(object):
         self.name = name
         self.children = {}
         self.start_time = 0
+        # is_start 用于标记上是否已经调用了start
+        self.is_start = False
 
     def start(self):
         self.running = True
         self.count += 1
+        self.start_time = time.time()
+        self.is_start = True
 
     def stop(self):
-        if self.start_time:
-            self.hang_up()
         self.running = False
+        self.time += (time.time() - float(self.start_time))
+        self.is_start = False
 
     def resume(self):
+        if self.is_start:
+            return
         self.running = True
         self.start_time = time.time()
 
     def hang_up(self):
+        if self.is_start:
+            return
         self.running = False
         self.time += (time.time() - float(self.start_time))
-        self.start_time = 0
 
     def is_running(self):
         return self.running
@@ -40,7 +47,7 @@ class TransactionNode(object):
 
 class Transaction(object):
 
-    current = root = {}
+    current = root = TransactionNode('root')
 
     def __init__(self, full_name):
         self.full_name = full_name
@@ -48,7 +55,7 @@ class Transaction(object):
 
     @classmethod
     def clear(cls):
-        cls.current = cls.root = {}
+        cls.current = cls.root = TransactionNode('root')
 
     @classmethod
     def get_current(cls):

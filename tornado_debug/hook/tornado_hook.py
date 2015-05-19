@@ -10,7 +10,7 @@ import json
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
-from tornado_debug.api.transaction import Transaction
+from tornado_debug.api.transaction import Transaction, AsyncTransaction
 
 logger = logging.getLogger(__name__)
 
@@ -70,13 +70,18 @@ class TornadoDataCollecter(DataCollecter):
             if handler_class in self.hooked_class:
                 continue
             for name in vars(handler_class):
-                func = vars(handler_class)[name]
+                func = getattr(handler_class, name)
+                raw_func = vars(handler_class)[name]
                 if not callable(func):
                     continue
-                if getattr(func, "_tm_is_async", False):
-                    continue
                 func_full_name = "%s.%s.%s" % (handler_class.__module__, handler_class.__name__, func.__name__)
-                setattr(handler_class, name, self.wrap_function(func, func_full_name))
+                if isinstance(raw_func, staticmethod):
+                    wrapped_func = self.wrap_static_method(func, func_full_name)
+                elif isinstance(raw_func, classmethod):
+                    wrapped_func = self.wrap_class_method(func, func_full_name)
+                else:
+                    wrapped_func = self.wrap_function(func, func_full_name)
+                setattr(handler_class, name, wrapped_func)
             for base_class in inspect.getmro(handler_class)[1:]:
                 full_name = "%s.%s" % (base_class.__module__, base_class.__name__)
                 if full_name not in ('__builtin__.object', 'tornado.web.RequestHandler'):
@@ -86,15 +91,24 @@ class TornadoDataCollecter(DataCollecter):
     def wrap_function(self, func, full_name):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            with Transaction(full_name) as trans:
-                trans.resume()
-                result = func(*args, **kwargs)
-                trans.hang_up()
-            return result
+            with Transaction(full_name):
+                return func(*args, **kwargs)
         return wrapper
 
+    def wrap_static_method(self, func, full_name):
+        def wrapper(*args, **kwargs):
+            with Transaction(full_name):
+                return func(*args, **kwargs)
+        return staticmethod(wrapper)
+
+    def wrap_class_method(self, func, full_name):
+        def wrapper(cls, *args, **kwargs):
+            with Transaction(full_name):
+                return func(*args, **kwargs)
+        return classmethod(wrapper)
+
     def raw_data(self):
-        sorted_result = self._sort_result(self.hooked_func)
+        sorted_result = self._sort_result(Transaction.root.children)
         sorted_flat_result = self._sort_flat_result()
         return {'time_use': self.time_use, 'func': sorted_result, 'flat': sorted_flat_result}
 
@@ -104,10 +118,10 @@ class TornadoDataCollecter(DataCollecter):
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=raw_data)
 
-    def _sort_result(self):
+    def _sort_result(self, children_nodes):
         funcs_list = []
-        for name, node in Transaction.root.items():
-            if node.is_running:
+        for name, node in children_nodes.items():
+            if node.is_running():
                 node.stop()
             # construtct flat result
             flat_data = self.flat_result.get(name, {"count": 0, 'time': 0})
@@ -214,23 +228,23 @@ def web_application_init_hook(original):
     return wrapper
 
 
-def web_asynchronous_hook(original):
-
+def gen_runner_init_hook(original):
     @functools.wraps(original)
-    def wrapper(*args, **kwargs):
-        args[0]._tm_is_async = True
-        return original(*args, **kwargs)
-
+    def wrapper(self, *args,  **kwargs):
+        self._tb_transaction = Transaction.get_current()
+        return original(self, *args, **kwargs)
     return wrapper
 
 
-def gen_engine_hook(original):
-
+def gen_runner_run_hook(original):
     @functools.wraps(original)
-    def wrapper(*args, **kwargs):
-        args[0]._tm_is_async = True
-        return original(*args, **kwargs)
-
+    def wrapper(self):
+        transaction = getattr(self, '_tb_transaction', None)
+        if transaction:
+            with AsyncTransaction(transaction):
+                return original(self)
+        else:
+            return original(self)
     return wrapper
 
 
@@ -238,5 +252,5 @@ def register_tornaodo_hook():
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler._execute', web_request_handler_execute_hook)
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler.finish', web_request_handler_finish_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__init__', web_application_init_hook)
-    regist_wrap_module_func_hook('tornado.web', 'asynchronous', web_asynchronous_hook)
-    regist_wrap_module_func_hook('tornado.gen', 'engine', gen_engine_hook)
+    regist_wrap_module_func_hook('tornado.gen', 'Runner.__init__', gen_runner_init_hook)
+    regist_wrap_module_func_hook('tornado.gen', 'Runner.run', gen_runner_run_hook)
