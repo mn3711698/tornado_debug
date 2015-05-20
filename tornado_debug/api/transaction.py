@@ -47,15 +47,24 @@ class TransactionNode(object):
 
 class Transaction(object):
 
-    current = root = TransactionNode('root')
+    current = root = TransactionNode('root')  # Transaction.root始终是单例
 
-    def __init__(self, full_name):
-        self.full_name = full_name
-        self.transaction = None
+    active = True  # 标记当前的统计是否有效
 
     @classmethod
-    def clear(cls):
-        cls.current = cls.root = TransactionNode('root')
+    def _clear(cls):
+        cls.root.children = {}
+        cls.current = cls.root
+
+    @classmethod
+    def start(cls):
+        cls.active = True
+        cls._clear()
+
+    @classmethod
+    def stop(cls):
+        cls.active = False
+        cls._clear()
 
     @classmethod
     def get_current(cls):
@@ -65,20 +74,29 @@ class Transaction(object):
     def set_current(cls, transaction):
         cls.current = transaction
 
+
+class SyncTransactionContext(object):
+
+    def __init__(self, full_name):
+        self.full_name = full_name
+        self.transaction = None
+
     def __enter__(self):
-        self.parent = self.current
-        self.transaction = self.parent.children.get(self.full_name, TransactionNode(self.full_name))
-        self.transaction.start()
-        self.parent.children[self.full_name] = self.transaction
-        self.set_current(self.transaction)
-        return self.transaction
+        if Transaction.active:
+            self.parent = Transaction.current
+            self.transaction = self.parent.children.get(self.full_name, TransactionNode(self.full_name))
+            self.transaction.start()
+            self.parent.children[self.full_name] = self.transaction
+            Transaction.set_current(self.transaction)
+            return self.transaction
 
     def __exit__(self, exc, value, tb):
-        self.transaction.stop()
-        self.set_current(self.parent)
+        if Transaction.active:
+            self.transaction.stop()
+            Transaction.set_current(self.parent)
 
 
-class AsyncTransaction(Transaction):
+class AsyncTransactionContext(object):
     """
     装饰Runner.run时使用
     """
@@ -86,14 +104,16 @@ class AsyncTransaction(Transaction):
         self.transaction = transaction
 
     def __enter__(self):
-        self.parent = self.current
-        self.set_current(self.transaction)
-        self.transaction.resume()
-        return self
+        if Transaction.active:
+            self.parent = Transaction.current
+            Transaction.set_current(self.transaction)
+            self.transaction.resume()
+            return self
 
     def __exit__(self, exc, value, tb):
-        self.transaction.hang_up()
-        self.set_current(self.parent)
+        if Transaction.active:
+            self.transaction.hang_up()
+            Transaction.set_current(self.parent)
 
 """
 Runner __init__ 时附加属性_td_transaction

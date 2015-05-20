@@ -10,7 +10,7 @@ import json
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
-from tornado_debug.api.transaction import Transaction, AsyncTransaction
+from tornado_debug.api.transaction import Transaction, AsyncTransactionContext, SyncTransactionContext
 
 logger = logging.getLogger(__name__)
 
@@ -91,19 +91,19 @@ class TornadoDataCollecter(DataCollecter):
     def wrap_function(self, func, full_name):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            with Transaction(full_name):
+            with SyncTransactionContext(full_name):
                 return func(*args, **kwargs)
         return wrapper
 
     def wrap_static_method(self, func, full_name):
         def wrapper(*args, **kwargs):
-            with Transaction(full_name):
+            with SyncTransactionContext(full_name):
                 return func(*args, **kwargs)
         return staticmethod(wrapper)
 
     def wrap_class_method(self, func, full_name):
         def wrapper(cls, *args, **kwargs):
-            with Transaction(full_name):
+            with SyncTransactionContext(full_name):
                 return func(*args, **kwargs)
         return classmethod(wrapper)
 
@@ -148,21 +148,36 @@ class TornadoDataCollecter(DataCollecter):
 
     def clear(self):
         self.flat_result = {}
-        Transaction.clear()
 
 
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
 
 
-def web_request_handler_execute_hook(original):
+#def web_request_handler_execute_hook(original):
+#    @functools.wraps(original)
+#    def wrapper(self, transforms, *args, **kwargs):
+#        if DataCollecter.running:
+#            self.request.finish()
+#        else:
+#            DataCollecter.running = True
+#            DataCollecter.clear_all()
+#            original(self, transforms, *args, **kwargs)
+#    return wrapper
+
+
+def web_application_call_hook(original):
+    """
+    application.__call__是开启监控的地方
+    """
     @functools.wraps(original)
-    def wrapper(self, transforms, *args, **kwargs):
+    def wrapper(self, request):
         if DataCollecter.running:
-            self.request.finish()
+            request.finish()
         else:
             DataCollecter.running = True
             DataCollecter.clear_all()
-            original(self, transforms, *args, **kwargs)
+            Transaction.start()
+            original(self, request)
     return wrapper
 
 
@@ -170,7 +185,8 @@ def web_request_handler_finish_hook(original):
     @functools.wraps(original)
     def wrapper(self, chunk=None):
         try:
-            if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response) or getattr(self, 'is_tnDebug_inner', False):
+            if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)) or getattr(self, 'is_tnDebug_inner', False):
+                # ajax请求、html和json其他格式的请求、tornado_debug内部请求不做特殊渲染
                 return original(self, chunk)
             else:
                 tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
@@ -200,7 +216,7 @@ def web_request_handler_finish_hook(original):
                         bits[-2] += content_to_add
                         chunk = insert_before_tag.join(bits)
                     else:
-                        # TODO: 对于非html的body，期望有更好的解决方案
+                        # TODO: 对于非html的body，将统计结果和response一起渲染，期望有更好的解决方案
                         chunk = utf8(DataCollecter.render(origin_response))
                 else:
                     chunk = utf8(DataCollecter.render(origin_response))
@@ -210,6 +226,8 @@ def web_request_handler_finish_hook(original):
                 return original(self, None)
         finally:
             DataCollecter.running = False
+            Transaction.stop()  # 监控结束
+            DataCollecter.clear_all()
     return wrapper
 
 
@@ -241,7 +259,7 @@ def gen_runner_run_hook(original):
     def wrapper(self):
         transaction = getattr(self, '_tb_transaction', None)
         if transaction:
-            with AsyncTransaction(transaction):
+            with AsyncTransactionContext(transaction):
                 return original(self)
         else:
             return original(self)
@@ -249,8 +267,9 @@ def gen_runner_run_hook(original):
 
 
 def register_tornaodo_hook():
-    regist_wrap_module_func_hook('tornado.web', 'RequestHandler._execute', web_request_handler_execute_hook)
+    #regist_wrap_module_func_hook('tornado.web', 'RequestHandler._execute', web_request_handler_execute_hook)
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler.finish', web_request_handler_finish_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__init__', web_application_init_hook)
+    regist_wrap_module_func_hook('tornado.web', 'Application.__call__', web_application_call_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.__init__', gen_runner_init_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.run', gen_runner_run_hook)
