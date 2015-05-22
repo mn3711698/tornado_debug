@@ -10,7 +10,9 @@ import json
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
-from tornado_debug.api.transaction import Transaction, AsyncTransactionContext, SyncTransactionContext
+from tornado_debug.api.transaction import (
+    Transaction, AsyncTransactionContext, SyncTransactionContext, AsyncCallbackContext
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,18 +155,6 @@ class TornadoDataCollecter(DataCollecter):
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
 
 
-#def web_request_handler_execute_hook(original):
-#    @functools.wraps(original)
-#    def wrapper(self, transforms, *args, **kwargs):
-#        if DataCollecter.running:
-#            self.request.finish()
-#        else:
-#            DataCollecter.running = True
-#            DataCollecter.clear_all()
-#            original(self, transforms, *args, **kwargs)
-#    return wrapper
-
-
 def web_application_call_hook(original):
     """
     application.__call__是开启监控的地方
@@ -266,10 +256,18 @@ def gen_runner_run_hook(original):
     return wrapper
 
 
+def gen_runner_set_result_hook(original):
+    @functools.wraps(original)
+    def wrapper(self, key, result):
+        with AsyncCallbackContext():
+            return original(self, key, result)
+    return wrapper
+
+
 def register_tornaodo_hook():
-    #regist_wrap_module_func_hook('tornado.web', 'RequestHandler._execute', web_request_handler_execute_hook)
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler.finish', web_request_handler_finish_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__init__', web_application_init_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__call__', web_application_call_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.__init__', gen_runner_init_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.run', gen_runner_run_hook)
+    regist_wrap_module_func_hook('tornado.gen', 'Runner.set_result', gen_runner_set_result_hook)

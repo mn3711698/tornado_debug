@@ -19,23 +19,43 @@ class TransactionNode(object):
         self.is_start = False
 
     def start(self):
+        """
+        函数首次启动
+        """
         self.running = True
         self.count += 1
         self.start_time = time.time()
         self.is_start = True
 
+    def restart(self):
+        """
+        重启， 重置启动时间, 用于Task的callback
+        """
+        self.running = True
+        self.start_time = time.time()
+        self.is_start = True
+
     def stop(self):
+        """
+        关闭
+        """
         self.running = False
         self.time += (time.time() - float(self.start_time))
         self.is_start = False
 
     def resume(self):
+        """
+        用于Runner.run, 统计异步执行
+        """
         if self.is_start:
             return
         self.running = True
         self.start_time = time.time()
 
     def hang_up(self):
+        """
+        用于Runner.run, 统计异步执行
+        """
         if self.is_start:
             return
         self.running = False
@@ -113,6 +133,22 @@ class AsyncTransactionContext(object):
     def __exit__(self, exc, value, tb):
         if Transaction.active:
             self.transaction.hang_up()
+            Transaction.set_current(self.parent)
+
+
+class AsyncCallbackContext(object):
+    """
+    gen.Task 执行callback时， 实际是进入了关联的Runner的run方法， 这部分代码执行时间不作为Task的时间
+    """
+    def __enter__(self):
+        if Transaction.active:
+            Transaction.current.stop()
+            self.parent = Transaction.current
+            return self
+
+    def __exit__(self, exc, value, tb):
+        if Transaction.active:
+            self.parent.restart()
             Transaction.set_current(self.parent)
 
 """
