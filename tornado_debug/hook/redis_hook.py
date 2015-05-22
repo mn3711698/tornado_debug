@@ -5,38 +5,19 @@ import json
 import types
 
 from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
+from tornado_debug.api.redis_trans import RedisTransactionContext
 
 
 class RedisDataCollecter(DataCollecter):
 
     def __init__(self, name, id):
         super(RedisDataCollecter, self).__init__(name, id)
-        self.commands = {}
 
     def wrap_function(self, func, full_name):
         @functools.wraps(func)
         def wrapper(instance, *args, **kwargs):
-            data = self.hooked_func.get(full_name, None) or {'count': 0, "time": 0, "running": False, "start": 0}
-            data['count'] += 1
-            data['running'] = True
-            data['start'] = time.time()
-            self.hooked_func[full_name] = data
-
-            command = self.commands.get(full_name, {})
-            args_trans, kwargs_trans = self._trans_args(args, kwargs)
-            key = self._get_args_str(args_trans, kwargs_trans)
-            detail = command.get(key, {'count': 0, "time": 0})
-            detail['count'] += 1
-            command[key] = detail
-            self.commands[full_name] = command
-
-            result = func(instance, *args_trans, **kwargs_trans)
-
-            end_time = time.time()
-            data['time'] = data['time'] + (end_time - data['start'])
-            data['running'] = False
-            detail['time'] += (end_time - data['start'])
-            return result
+            with RedisTransactionContext(full_name, *args, **kwargs):
+                return func(instance, *args, **kwargs)
 
         return wrapper
 
@@ -77,10 +58,6 @@ class RedisDataCollecter(DataCollecter):
             return [n for n in arg]
         else:
             return arg
-
-    def clear(self):
-        super(RedisDataCollecter, self).clear()
-        self.commands = {}
 
 
 redis_data_collecter = RedisDataCollecter("Redis", "Redis")
