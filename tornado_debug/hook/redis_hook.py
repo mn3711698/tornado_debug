@@ -1,11 +1,8 @@
 # coding:utf8
 import functools
-import time
-import json
-import types
 
 from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
-from tornado_debug.api.redis_trans import RedisTransactionContext
+from tornado_debug.api.redis_trans import RedisTransactionContext, RedisTransNode
 
 
 class RedisDataCollecter(DataCollecter):
@@ -22,8 +19,7 @@ class RedisDataCollecter(DataCollecter):
         return wrapper
 
     def raw_data(self):
-        func = super(RedisDataCollecter, self).raw_data()
-        commands = self._format_commands_result()
+        func, commands = RedisTransNode.get_result()
         panel = {'func': func, 'commands': commands}
         return panel
 
@@ -31,33 +27,6 @@ class RedisDataCollecter(DataCollecter):
         panel = self.raw_data()
         template = jinja_env.get_template('redis.html')
         return template.render(panel=panel)
-
-    def _format_commands_result(self):
-        result = {}
-        for command, detail in self.commands.items():
-            detail_list = [{'args': args, 'count': data['count'], 'time': round(data['time']*1000, 2)} for args, data in detail.items()]
-            detail_list = sorted(detail_list, key=lambda x: x['time'], reverse=True)
-            result[command] = detail_list
-
-        return result
-
-    def _trans_args(self, args, kwargs):
-        # TODO: 此处期待有更好的解决方法
-        args_trans = [self._iter_to_common_list(arg) for arg in args]
-        kwargs_trans = {}
-        for k, v in kwargs.items():
-            kwargs_trans[k] = self._iter_to_common_list(v)
-        return args_trans, kwargs_trans
-
-    def _get_args_str(self, args, kwargs):
-        # TODO: 此处期待有更好的解决方法
-        return json.dumps({'args': args, 'kwargs': kwargs})
-
-    def _iter_to_common_list(self, arg):
-        if isinstance(arg, types.GeneratorType):
-            return [n for n in arg]
-        else:
-            return arg
 
 
 redis_data_collecter = RedisDataCollecter("Redis", "Redis")
@@ -103,7 +72,9 @@ _compatibility_method_in_redis = ['setex', 'lrem', 'zadd']
 
 def regist_redis_client_hook():
     for method in _redis_client_methods:
-        wrapper_factory = functools.partial(redis_data_collecter.wrap_function, full_name=method)
+        # 构造独一无二的方法名
+        full_name = "_tb_redis_%s" % method
+        wrapper_factory = functools.partial(redis_data_collecter.wrap_function, full_name=full_name)
         regist_wrap_module_func_hook("redis.client", "StrictRedis.%s" % method, wrapper_factory)
         if method in _compatibility_method_in_redis:
             regist_wrap_module_func_hook("redis.client", "Redis.%s" % method, wrapper_factory)

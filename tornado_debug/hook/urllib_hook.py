@@ -1,9 +1,9 @@
 # coding: utf8
 import functools
 import six
-import time
 
 from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
+from tornado_debug.api.urllib_trans import UrllibTransContext, UrllibTransNode
 
 
 class UrlLibDataCollecter(DataCollecter):
@@ -17,20 +17,13 @@ class UrlLibDataCollecter(DataCollecter):
             url = args[0]
             if not isinstance(url, six.string_types):
                 url = url.get_full_url()
-            data = self.hooked_func.get(url, None) or {'count': 0, "time": 0, "running": False, "start": 0}
-            data['count'] += 1
-            data['running'] = True
-            data['start'] = time.time()
-            self.hooked_func[url] = data
-            result = func(*args, **kwargs)
-            data['time'] += (time.time() - data['start'])
-            data['running'] = False
-            return result
+            with UrllibTransContext(url):
+                return func(*args, **kwargs)
 
         return wrapper
 
     def render_data(self):
-        func = super(UrlLibDataCollecter, self).render_data()
+        func = UrllibTransNode.get_result()
         panel = {'urls': func}
         template = jinja_env.get_template('urllib.html')
         return template.render(panel=panel)

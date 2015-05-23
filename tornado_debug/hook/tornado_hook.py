@@ -11,7 +11,9 @@ from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
 from tornado_debug.api.transaction import (
-    Transaction, AsyncTransactionContext, SyncTransactionContext, AsyncCallbackContext
+    Transaction, AsyncTransactionContext,
+    SyncTransactionContext, AsyncCallbackContext,
+    TransactionNode
 )
 
 logger = logging.getLogger(__name__)
@@ -60,7 +62,6 @@ class TornadoDataCollecter(DataCollecter):
         # record hooked class
         self.hooked_class = set()
         super(TornadoDataCollecter, self).__init__(name, id)
-        self.flat_result = {}
 
     def hook_user_handler_func(self, handler_class):
         if handler_class in self.hooked_class:
@@ -110,46 +111,14 @@ class TornadoDataCollecter(DataCollecter):
         return classmethod(wrapper)
 
     def raw_data(self):
-        sorted_result = self._sort_result(Transaction.root.children)
-        sorted_flat_result = self._sort_flat_result()
-        return {'time_use': self.time_use, 'func': sorted_result, 'flat': sorted_flat_result}
+        func_result, flat_result = TransactionNode.get_result()
+        return {'time_use': self.time_use, 'func': func_result, 'flat': flat_result}
 
     def render_data(self):
         raw_data = self.raw_data()
         raw_data['func'] = json.dumps(raw_data['func'])
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=raw_data)
-
-    def _sort_result(self, children_nodes):
-        funcs_list = []
-        for name, node in children_nodes.items():
-            if node.is_running():
-                node.stop()
-            # construtct flat result
-            flat_data = self.flat_result.get(name, {"count": 0, 'time': 0})
-            flat_data['count'] += node.count
-            flat_data['time'] += node.time
-            self.flat_result[name] = flat_data
-
-            node.time = round(node.time*1000, 2)
-
-            funcs_list.append({'name': name, 'count': node.count, 'time': node.time, 'children': node.children})
-        funcs_list = sorted(funcs_list, key=lambda x: x['time'], reverse=True)
-
-        for item in funcs_list:
-            item['children'] = self._sort_result(item['children'])
-
-        return funcs_list
-
-    def _sort_flat_result(self):
-        result_list = []
-        for name, data in self.flat_result.items():
-            data['time'] = round(data['time']*1000, 2)
-            result_list.append({'name': name, 'count': data['count'], 'time': data['time']})
-        return sorted(result_list, key=lambda x: x['time'], reverse=True)
-
-    def clear(self):
-        self.flat_result = {}
 
 
 tornado_data_collecter = TornadoDataCollecter("Tornado", "Tornado")
