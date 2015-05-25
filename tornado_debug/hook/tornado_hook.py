@@ -110,12 +110,12 @@ class TornadoDataCollecter(DataCollecter):
                 return func(*args, **kwargs)
         return classmethod(wrapper)
 
-    def raw_data(self):
-        func_result, flat_result = TransactionNode.get_result()
-        return {'time_use': self.time_use, 'func': func_result, 'flat': flat_result}
+    def raw_data(self, request):
+        func_result, flat_result = TransactionNode.get_result(request)
+        return {'time_use': 0, 'func': func_result, 'flat': flat_result}
 
-    def render_data(self):
-        raw_data = self.raw_data()
+    def render_data(self, request):
+        raw_data = self.raw_data(request)
         raw_data['func'] = json.dumps(raw_data['func'])
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=raw_data)
@@ -130,13 +130,8 @@ def web_application_call_hook(original):
     """
     @functools.wraps(original)
     def wrapper(self, request):
-        if DataCollecter.running:
-            request.finish()
-        else:
-            DataCollecter.running = True
-            DataCollecter.clear_all()
-            Transaction.start()
-            original(self, request)
+        Transaction.start(request)
+        return original(self, request)
     return wrapper
 
 
@@ -144,17 +139,24 @@ def web_request_handler_finish_hook(original):
     @functools.wraps(original)
     def wrapper(self, chunk=None):
         try:
-            if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)) or getattr(self, 'is_tnDebug_inner', False):
+            if getattr(self, 'is_tnDebug_inner', False):
+                return original(self, chunk)
+
+            # server mode only response the debug data
+            if config.SERVER_MODE:
+                # self._write_buffer = []
+                # self.write(DataCollecter.json())
+                tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
+                result = utf8(DataCollecter.render(self.request))
+                if result:
+                    open('td_result/%s-[%s]' % (self.request.uri.replace('/', '#'), self.request._start_time), 'a').write(result)
+                return original(self, chunk)
+
+            if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)):
                 # ajax请求、html和json其他格式的请求、tornado_debug内部请求不做特殊渲染
                 return original(self, chunk)
             else:
                 tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
-
-                # server mode only response the debug data
-                if config.SERVER_MODE:
-                    self._write_buffer = []
-                    self.write(DataCollecter.json())
-                    return original(self)
 
                 if chunk:
                     self.write(chunk)
@@ -166,7 +168,7 @@ def web_request_handler_finish_hook(original):
                     bits = re.split(pattern, chunk, flags=re.IGNORECASE)
                     if len(bits) > 1:
                         history_key = int(time.time())
-                        history_val = utf8(DataCollecter.render())
+                        history_val = utf8(DataCollecter.render(self.request))
                         DataCollecter.set_history(history_key, history_val)
                         # 因为可能先write, 再finish. 为了插入结果， 只能手动修改_write_buffer
                         # 放入_write_buffer的必须时utf8编码过的
@@ -176,17 +178,16 @@ def web_request_handler_finish_hook(original):
                         chunk = insert_before_tag.join(bits)
                     else:
                         # TODO: 对于非html的body，将统计结果和response一起渲染，期望有更好的解决方案
-                        chunk = utf8(DataCollecter.render(origin_response))
+                        chunk = utf8(DataCollecter.render(self.request, origin_response))
                 else:
-                    chunk = utf8(DataCollecter.render(origin_response))
+                    chunk = utf8(DataCollecter.render(self.request, origin_response))
                 if not is_html_response(self):
                     self.set_header('Content-Type', 'text/html')
                 self._write_buffer = [chunk]
                 return original(self, None)
         finally:
-            DataCollecter.running = False
-            Transaction.stop()  # 监控结束
-            DataCollecter.clear_all()
+            Transaction.stop(self.request)  # 监控结束
+            DataCollecter.clear_all(self.request)
     return wrapper
 
 
@@ -248,5 +249,5 @@ def register_tornaodo_hook():
     regist_wrap_module_func_hook('tornado.gen', 'Runner.__init__', gen_runner_init_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.run', gen_runner_run_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.set_result', gen_runner_set_result_hook)
-    regist_wrap_module_func_hook('tornado.simple_httpclient', 'SimpleAsyncHTTPClient.fetch',
-                                 simple_httpclient_SimpleAsyncHTTPClient_fetch)
+    #regist_wrap_module_func_hook('tornado.simple_httpclient', 'SimpleAsyncHTTPClient.fetch',
+    #                             simple_httpclient_SimpleAsyncHTTPClient_fetch)

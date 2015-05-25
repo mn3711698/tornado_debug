@@ -24,8 +24,15 @@ class TransactionNode(object):
     """
     __metaclass__ = NodeMeta
 
-    result = {}
-    flat_result = {}
+    requests_m_result = {}
+    # request: {
+    # result : {}
+    # flat_result : {}
+    # url : ""
+    # method : ""
+    # code : 200
+    # time : 0
+    # }
 
     def __init__(self, name):
         self.count = 0
@@ -83,36 +90,40 @@ class TransactionNode(object):
     def is_running(self):
         return self.running
 
-    def classify(self):
+    def classify(self, request):
         """
         子类进行特殊话处理
         """
         pass
 
     @classmethod
-    def get_result(cls):
-        return cls.result, cls.flat_result
+    def get_result(cls, request):
+        result = cls.requests_m_result[request]
+        return result['result'], result['flat_result']
 
     @classmethod
-    def trim_data(cls):
+    def trim_data(cls, request):
         """
         渲染或者存储之前整理数据
         """
-        cls.result = cls._sort_result(Transaction.root.children)
-        cls.flat_result = get_sorted_data(cls.flat_result)
+        root = Transaction.get_root(request)
+        flat_result = {}
+        result = cls._sort_result(root.children, flat_result, request)
+        flat_result = get_sorted_data(flat_result)
+        cls.requests_m_result[request] = {'result': result, 'flat_result': flat_result}
 
     @classmethod
-    def _sort_result(cls, children_nodes):
+    def _sort_result(cls, children_nodes, flat_result, request):
         funcs_list = []
         for name, node in children_nodes.items():
             if node.is_running():
                 node.stop()
-            node.classify() # node 分类处理
+            node.classify(request) # node 分类处理
             # construtct flat result
-            flat_data = cls.flat_result.get(name, {"count": 0, 'time': 0})
-            flat_data['count'] += node.count
-            flat_data['time'] += node.time
-            cls.flat_result[name] = flat_data
+            flat = flat_result.get(name, {"count": 0, 'time': 0})
+            flat['count'] += node.count
+            flat['time'] += node.time
+            flat_result[name] = flat
 
             node.time = round(node.time*1000, 2)
 
@@ -120,44 +131,47 @@ class TransactionNode(object):
         funcs_list = sorted(funcs_list, key=lambda x: x['time'], reverse=True)
 
         for item in funcs_list:
-            item['children'] = cls._sort_result(item['children'])
+            item['children'] = cls._sort_result(item['children'], flat_result, request)
 
         return funcs_list
 
-    @staticmethod
-    def clear():
-        TransactionNode.result = {}
-        TransactionNode.flat_result = {}
+    @classmethod
+    def clear(cls, request):
+        if request in cls.requests_m_result:
+            del cls.requests_m_result[request]
 
 
 class Transaction(object):
-
-    current = root = TransactionNode('root')  # Transaction.root始终是单例
-
-    active = True  # 标记当前的统计是否有效
+    requests_map_trans = {}  # {request: Transaction}
+    current = None
 
     @classmethod
-    def _clear(cls):
-        cls.root.children = {}
-        cls.current = cls.root
+    def start(cls, request):
+        assert request not in cls.requests_map_trans
+        cls.current = cls.requests_map_trans[request] = TransactionNode('root')
 
     @classmethod
-    def start(cls):
-        cls.active = True
-        cls._clear()
+    def stop(cls, request):
+        if request in cls.requests_map_trans:
+            del cls.requests_map_trans[request]
+            if not len(cls.requests_map_trans):
+                cls.current = None
 
     @classmethod
-    def stop(cls):
-        cls.active = False
-        cls._clear()
+    def get_root(cls, request):
+        return cls.requests_map_trans.get(request, None)
+
+    @classmethod
+    def set_current(cls, trans_node):
+        cls.current = trans_node
 
     @classmethod
     def get_current(cls):
         return cls.current
 
     @classmethod
-    def set_current(cls, transaction):
-        cls.current = transaction
+    def is_active(cls):
+        return cls.current is not None
 
 
 class SyncTransactionContext(object):
@@ -169,7 +183,7 @@ class SyncTransactionContext(object):
         self.transaction = None
 
     def __enter__(self):
-        if Transaction.active:
+        if Transaction.is_active():
             self.parent = Transaction.current
             self.transaction = self.parent.children.get(self.full_name, self.node_cls(self.full_name))
             self.transaction.start()
@@ -178,7 +192,7 @@ class SyncTransactionContext(object):
             return self.transaction
 
     def __exit__(self, exc, value, tb):
-        if Transaction.active:
+        if Transaction.is_active():
             self.transaction.stop()
             Transaction.set_current(self.parent)
 
@@ -191,14 +205,14 @@ class AsyncTransactionContext(object):
         self.transaction = transaction
 
     def __enter__(self):
-        if Transaction.active:
+        if Transaction.is_active():
             self.parent = Transaction.current
             Transaction.set_current(self.transaction)
             self.transaction.resume()
             return self
 
     def __exit__(self, exc, value, tb):
-        if Transaction.active:
+        if Transaction.is_active():
             self.transaction.hang_up()
             Transaction.set_current(self.parent)
 
@@ -208,13 +222,13 @@ class AsyncCallbackContext(object):
     gen.Task 执行callback时， 实际是进入了关联的Runner的run方法， 这部分代码执行时间不作为Task的时间
     """
     def __enter__(self):
-        if Transaction.active:
+        if Transaction.is_active():
             Transaction.current.stop()
             self.parent = Transaction.current
             return self
 
     def __exit__(self, exc, value, tb):
-        if Transaction.active:
+        if Transaction.is_active():
             self.parent.restart()
             Transaction.set_current(self.parent)
 

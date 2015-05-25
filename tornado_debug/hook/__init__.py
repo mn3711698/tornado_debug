@@ -8,7 +8,9 @@ from jinja2 import Environment, PackageLoader
 
 from tornado_debug.utils import resolve_path
 from tornado_debug.import_hook import register_import_hook
-from tornado_debug.api.transaction import TransactionNode, NodeClasses
+from tornado_debug.api.transaction import (
+    TransactionNode, NodeClasses, Transaction
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,31 +62,24 @@ class DataCollecter(object):
         return wrapper
 
     @classmethod
-    def clear_all(cls):
+    def clear_all(cls, request):
         for node_cls in NodeClasses:
-            node_cls.clear()
+            node_cls.clear(request)
 
-    def raw_data(self):
+    def raw_data(self, request):
         """
         统计的原始数据
         """
-        func = []
-        for name, data in self.hooked_func.items():
-            if data['running']:
-                data['time'] = data['time'] + (time.time() - data['start'])
-            data['time'] = round(data['time']*1000, 2)
-            func.append({'name': name, 'count': data['count'], 'time': data['time']})
-        func = sorted(func, key=lambda x: x['time'], reverse=True)
-        return func
+        pass
 
-    def render_data(self):
+    def render_data(self, request):
         """
         渲染统计的数据
         """
-        return self.raw_data()
+        return self.raw_data(request)
 
-    def get_panel(self):
-        return {'name': self.name, 'id': self.id, 'content': self.render_data()}
+    def get_panel(self, request):
+        return {'name': self.name, 'id': self.id, 'content': self.render_data(request)}
 
     @staticmethod
     def get_response_panel(response):
@@ -96,7 +91,7 @@ class DataCollecter(object):
         return {'name': 'response', 'id': 'response', 'content': content}
 
     @classmethod
-    def render(cls, response=None):
+    def render(cls, request, response=None):
         """
         渲染页面
         """
@@ -104,8 +99,10 @@ class DataCollecter(object):
         # for collecter in cls.instances:
         #    result[collecter.name] = collecter.render_data()
         # return json.dumps(result)
-        TransactionNode.trim_data()
-        panels = [instance.get_panel() for instance in cls.instances]
+        if not Transaction.get_root(request):
+            return ""
+        TransactionNode.trim_data(request)
+        panels = [instance.get_panel(request) for instance in cls.instances]
         if response:
             panels.append(cls.get_response_panel(response))
         template = jinja_env.get_template('index.html')
