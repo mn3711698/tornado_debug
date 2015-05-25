@@ -233,6 +233,14 @@ def gen_runner_set_result_hook(original):
     return wrapper
 
 
+def simple_httpclient_SimpleAsyncHTTPClient_fetch(original):
+    @functools.wraps(original)
+    def wrapper(self, *args, **kwargs):
+        with SyncTransactionContext("tornado.simple_httpclient.SimpleAsyncHTTPClient.fetch"):
+            return original(self, *args, **kwargs)
+    return wrapper
+
+
 def register_tornaodo_hook():
     regist_wrap_module_func_hook('tornado.web', 'RequestHandler.finish', web_request_handler_finish_hook)
     regist_wrap_module_func_hook('tornado.web', 'Application.__init__', web_application_init_hook)
@@ -240,3 +248,5 @@ def register_tornaodo_hook():
     regist_wrap_module_func_hook('tornado.gen', 'Runner.__init__', gen_runner_init_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.run', gen_runner_run_hook)
     regist_wrap_module_func_hook('tornado.gen', 'Runner.set_result', gen_runner_set_result_hook)
+    regist_wrap_module_func_hook('tornado.simple_httpclient', 'SimpleAsyncHTTPClient.fetch',
+                                 simple_httpclient_SimpleAsyncHTTPClient_fetch)

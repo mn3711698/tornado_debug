@@ -8,8 +8,7 @@ from jinja2 import Environment, PackageLoader
 
 from tornado_debug.utils import resolve_path
 from tornado_debug.import_hook import register_import_hook
-from tornado_debug.api.transaction import TransactionNode
-from tornado_debug.api.redis_trans import RedisTransNode
+from tornado_debug.api.transaction import TransactionNode, NodeClasses
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +61,8 @@ class DataCollecter(object):
 
     @classmethod
     def clear_all(cls):
-        RedisTransNode.clear()
-        TransactionNode.clear()
+        for node_cls in NodeClasses:
+            node_cls.clear()
 
     def raw_data(self):
         """

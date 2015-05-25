@@ -4,11 +4,25 @@ import time
 from .utils import get_sorted_data
 
 
+"""
+Node 负责存储 ；Transation 负责调用Node
+"""
+
+NodeClasses = []
+
+
+class NodeMeta(type):
+    def __init__(cls, name, bases, dct):
+        type.__init__(cls, name, bases, dct)
+        NodeClasses.append(cls)
+
+
 class TransactionNode(object):
     """
     一次函数调用只使用一次start , stop
     对于异步函数，start , stop 之间有多次resume, 和 hangup
     """
+    __metaclass__ = NodeMeta
 
     result = {}
     flat_result = {}
@@ -114,7 +128,6 @@ class TransactionNode(object):
     def clear():
         TransactionNode.result = {}
         TransactionNode.flat_result = {}
-
 
 
 class Transaction(object):

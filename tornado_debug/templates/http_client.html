@@ -1,0 +1,19 @@
+<h3 class="page-header">SimpleHttpClient</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>url</th>
+            <th>code</th>
+            <th>time(ms)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in panel.requests %}
+        <tr>
+            <th>{{ item.url }}</th>
+            <th>{{ item.code }}</th>
+            <th>{{ item.time }}</th>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
