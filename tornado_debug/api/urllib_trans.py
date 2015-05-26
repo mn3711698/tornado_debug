@@ -4,25 +4,24 @@ from .utils import get_sorted_data
 
 
 class UrllibTransNode(TransactionNode):
-    urls_result = {}
+    requests_m_result = {}
 
-    @staticmethod
-    def clear():
-        UrllibTransNode.urls_result = {}
-
-    def classify(self):
+    def classify(self, request):
         cls = UrllibTransNode
         node = self
 
-        data = cls.urls_result.get(node.name, {'count': 0, 'time': 0})
-        cls.urls_result[node.name] = data
+        result = cls.requests_m_result.get(request, {})
+        data = result.get(node.name, {'count': 0, 'time': 0})
         data['count'] += node.count
         data['time'] += node.time
+        result[node.name] = data
+        cls.requests_m_result[request] = result
 
     @classmethod
-    def get_result(cls):
-        cls.urls_result = get_sorted_data(cls.urls_result)
-        return cls.urls_result
+    def get_result(cls, request):
+        if request not in cls.requests_m_result:
+            return []
+        return get_sorted_data(cls.requests_m_result[request])
 
 
 class UrllibTransContext(SyncTransactionContext):

@@ -65,6 +65,8 @@ class DataCollecter(object):
     def clear_all(cls, request):
         for node_cls in NodeClasses:
             node_cls.clear(request)
+        # 先清理node, 再stop Transaction, 因为node依赖request和transaction的对应关系
+        Transaction.stop(request)
 
     def raw_data(self, request):
         """
