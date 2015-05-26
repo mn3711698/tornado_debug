@@ -149,7 +149,7 @@ def web_request_handler_finish_hook(original):
                 tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
                 result = utf8(DataCollecter.render(self.request))
                 if result:
-                    open('td_result/%s-[%s]' % (self.request.uri.replace('/', '#'), self.request._start_time), 'a').write(result)
+                    open('/Users/lianbo/tmpt/%s' % self.request._start_time, 'a').write(result)
                 return original(self, chunk)
 
             if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)):
