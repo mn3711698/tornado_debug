@@ -1,2 +1,8 @@
+<h3 class="page-header">log</h3>
+<p>{{context.method}} {{context.url}} {{context.code}} {{context.time_use}}ms</p>
+
+{% if context.response %}
+<h3 class="page-header">response</h3>
 <div id='response-json' style='display: none;'></div>
 <div id='response-data' style='display: none;'>{{ response }}</div>
+{% endif %}

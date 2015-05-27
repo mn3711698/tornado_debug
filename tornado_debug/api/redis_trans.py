@@ -109,4 +109,4 @@ class RedisTransactionContext(object):
     def __exit__(self, exc, value, tb):
         if Transaction.is_active():
             self.transaction.stop(*self.args, **self.kwargs)
-            Transaction.set_current(self.parent)
+            Transaction.restore(self.parent)

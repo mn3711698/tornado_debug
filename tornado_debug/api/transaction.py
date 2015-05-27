@@ -34,7 +34,7 @@ class TransactionNode(object):
     # time : 0
     # }
 
-    def __init__(self, name):
+    def __init__(self, name, is_root=False):
         self.count = 0
         self.running = False
         self.time = 0
@@ -43,6 +43,7 @@ class TransactionNode(object):
         self.start_time = 0
         # is_start 用于标记上是否已经调用了start
         self.is_start = False
+        self.is_root = is_root
 
     def start(self):
         """
@@ -166,6 +167,17 @@ class Transaction(object):
         cls.current = trans_node
 
     @classmethod
+    def restore(cls, trans_node):
+        """
+        在context.__exit__中调用， 如果回归到跟节点,
+        则说明请求的调用完成了，Transaction将处于无效状态，直到有新的请求进来
+        """
+        if trans_node.is_root:
+            cls.current = None
+        else:
+            cls.current = trans_node
+
+    @classmethod
     def get_current(cls):
         return cls.current
 
@@ -194,7 +206,7 @@ class SyncTransactionContext(object):
     def __exit__(self, exc, value, tb):
         if Transaction.is_active():
             self.transaction.stop()
-            Transaction.set_current(self.parent)
+            Transaction.restore(self.parent)
 
 
 class AsyncTransactionContext(object):
@@ -214,7 +226,7 @@ class AsyncTransactionContext(object):
     def __exit__(self, exc, value, tb):
         if Transaction.is_active():
             self.transaction.hang_up()
-            Transaction.set_current(self.parent)
+            Transaction.restore(self.parent)
 
 
 class AsyncCallbackContext(object):
@@ -230,7 +242,7 @@ class AsyncCallbackContext(object):
     def __exit__(self, exc, value, tb):
         if Transaction.is_active():
             self.parent.restart()
-            Transaction.set_current(self.parent)
+            Transaction.restore(self.parent)
 
 """
 Runner __init__ 时附加属性_td_transaction

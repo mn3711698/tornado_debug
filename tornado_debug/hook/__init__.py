@@ -84,29 +84,33 @@ class DataCollecter(object):
         return {'name': self.name, 'id': self.id, 'content': self.render_data(request)}
 
     @staticmethod
-    def get_response_panel(response):
+    def get_response_panel(handler, response=""):
         """
         展示原始请求结果的pannel, 用于api的统计
         """
         template = jinja_env.get_template('response.html')
-        content = template.render(response=response)
+        url = handler.request.uri
+        method = handler.request.method
+        code = handler._status_code
+        time_use = round(handler.request.request_time()*1000, 2)
+        context = {'url': url, 'method': method, 'code': code,
+                   'time_use': time_use, 'response': response}
+        content = template.render(context=context)
         return {'name': 'response', 'id': 'response', 'content': content}
 
     @classmethod
-    def render(cls, request, response=None):
+    def render(cls, handler, response=None):
         """
         渲染页面
         """
-        # result = {}
-        # for collecter in cls.instances:
-        #    result[collecter.name] = collecter.render_data()
-        # return json.dumps(result)
+        request = handler.request
         if not Transaction.get_root(request):
             return ""
         TransactionNode.trim_data(request)
         panels = [instance.get_panel(request) for instance in cls.instances]
-        if response:
-            panels.append(cls.get_response_panel(response))
+
+        panels.append(cls.get_response_panel(handler, response))
+
         template = jinja_env.get_template('index.html')
         return template.render(panels=panels)
 

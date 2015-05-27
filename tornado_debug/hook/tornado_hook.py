@@ -112,7 +112,8 @@ class TornadoDataCollecter(DataCollecter):
 
     def raw_data(self, request):
         func_result, flat_result = TransactionNode.get_result(request)
-        return {'time_use': 0, 'func': func_result, 'flat': flat_result}
+        return {'func': func_result,
+                'flat': flat_result}
 
     def render_data(self, request):
         raw_data = self.raw_data(request)
@@ -146,8 +147,7 @@ def web_request_handler_finish_hook(original):
             if config.SERVER_MODE:
                 # self._write_buffer = []
                 # self.write(DataCollecter.json())
-                tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
-                result = utf8(DataCollecter.render(self.request))
+                result = utf8(DataCollecter.render(self))
                 if result:
                     open('/Users/lianbo/tmpt/%s' % self.request._start_time, 'a').write(result)
                 return original(self, chunk)
@@ -168,7 +168,7 @@ def web_request_handler_finish_hook(original):
                     bits = re.split(pattern, chunk, flags=re.IGNORECASE)
                     if len(bits) > 1:
                         history_key = int(time.time())
-                        history_val = utf8(DataCollecter.render(self.request))
+                        history_val = utf8(DataCollecter.render(self))
                         DataCollecter.set_history(history_key, history_val)
                         # 因为可能先write, 再finish. 为了插入结果， 只能手动修改_write_buffer
                         # 放入_write_buffer的必须时utf8编码过的
@@ -178,9 +178,9 @@ def web_request_handler_finish_hook(original):
                         chunk = insert_before_tag.join(bits)
                     else:
                         # TODO: 对于非html的body，将统计结果和response一起渲染，期望有更好的解决方案
-                        chunk = utf8(DataCollecter.render(self.request, origin_response))
+                        chunk = utf8(DataCollecter.render(self, origin_response))
                 else:
-                    chunk = utf8(DataCollecter.render(self.request, origin_response))
+                    chunk = utf8(DataCollecter.render(self, origin_response))
                 if not is_html_response(self):
                     self.set_header('Content-Type', 'text/html')
                 self._write_buffer = [chunk]
