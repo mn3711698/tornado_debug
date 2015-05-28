@@ -12,7 +12,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        '': ['*.css', '*.js', '*.html']},
+        'tornado_debug': ['bootstrap/'],
+    },
     install_requires=[
         'tornado==2.4.1',
         'redis',

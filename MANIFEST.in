@@ -1,1 +1,2 @@
 include tor-debug README.md LICENSE.txt
+recursive-include tornado_debug  *.css *.js *.jpg *.gif *.png *.html
