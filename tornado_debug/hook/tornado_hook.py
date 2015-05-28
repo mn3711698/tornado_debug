@@ -7,6 +7,8 @@ import time
 import re
 import json
 
+from tornado.httpclient import AsyncHTTPClient
+
 from . import regist_wrap_module_func_hook, DataCollecter, jinja_env
 from .tornado_urls import urls
 from tornado_debug import config
@@ -19,6 +21,15 @@ from tornado_debug.api.transaction import (
 logger = logging.getLogger(__name__)
 
 _HTML_TYPES = ('text/html', 'application/xhtml+xml')
+
+_td_http_client = AsyncHTTPClient(force_instance=True)
+
+
+def store_debug_data(body):
+    def callback(response):
+        pass
+    _td_http_client.fetch(config.STORAGE_URL, callback, method='POST', body=body,
+                          connect_timeout=1, request_timeout=1)
 
 
 def is_ajax_request(request):
@@ -115,8 +126,7 @@ class TornadoDataCollecter(DataCollecter):
         return {'func': func_result,
                 'flat': flat_result}
 
-    def render_data(self, request):
-        raw_data = self.raw_data(request)
+    def render_data(self, raw_data):
         raw_data['func'] = json.dumps(raw_data['func'])
         template = jinja_env.get_template('tornado.html')
         return template.render(panel=raw_data)
@@ -142,14 +152,11 @@ def web_request_handler_finish_hook(original):
         try:
             if getattr(self, 'is_tnDebug_inner', False):
                 return original(self, chunk)
-
             # server mode only response the debug data
             if config.SERVER_MODE:
-                # self._write_buffer = []
-                # self.write(DataCollecter.json())
-                result = utf8(DataCollecter.render(self))
+                result = utf8(DataCollecter.json(self))
                 if result:
-                    open('/Users/lianbo/tmpt/%s' % self.request._start_time, 'a').write(result)
+                    store_debug_data(result)
                 return original(self, chunk)
 
             if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)):

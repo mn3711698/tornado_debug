@@ -1,11 +1,13 @@
 # coding:utf8
 import functools
 
-from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
+from . import DataCollecter, regist_wrap_module_func_hook
 from tornado_debug.api.redis_trans import RedisTransactionContext, RedisTransNode
 
 
 class RedisDataCollecter(DataCollecter):
+
+    template = 'redis.html'
 
     def __init__(self, name, id):
         super(RedisDataCollecter, self).__init__(name, id)
@@ -22,11 +24,6 @@ class RedisDataCollecter(DataCollecter):
         func, commands = RedisTransNode.get_result(request)
         panel = {'func': func, 'commands': commands}
         return panel
-
-    def render_data(self, request):
-        panel = self.raw_data(request)
-        template = jinja_env.get_template('redis.html')
-        return template.render(panel=panel)
 
 
 redis_data_collecter = RedisDataCollecter("Redis", "Redis")

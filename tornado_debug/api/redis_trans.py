@@ -77,6 +77,8 @@ class RedisTransNode(TransactionNode):
 
     @classmethod
     def get_result(cls, request):
+        if request not in cls.requests_m_result:
+            return [], []
         result = cls.requests_m_result[request]
 
         final_func_result = result['final_func_result']

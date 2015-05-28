@@ -2,20 +2,16 @@
 import functools
 import six
 
-from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
+from . import DataCollecter, regist_wrap_module_func_hook
 from tornado_debug.api.urllib_trans import UrllibTransContext, UrllibTransNode
 
 
 class UrlLibDataCollecter(DataCollecter):
+    template = 'urllib.html'
 
     def raw_data(self, request):
         func = UrllibTransNode.get_result(request)
         return {'urls': func}
-
-    def render_data(self, request):
-        panel = self.raw_data(request)
-        template = jinja_env.get_template('urllib.html')
-        return template.render(panel=panel)
 
 
 urllib23_data_collecter = UrlLibDataCollecter('UrlLib', 'urllib')

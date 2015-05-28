@@ -1,11 +1,13 @@
 # coding:utf8
 import functools
 
-from . import DataCollecter, regist_wrap_module_func_hook, jinja_env
+from . import DataCollecter, regist_wrap_module_func_hook
 from tornado_debug.api.httpclient_trans import HttpClientTransNode, HttpClientTransContext
 
 
 class TorndoHttpRequestCollecter(DataCollecter):
+
+    template = 'http_client.html'
 
     def __init__(self, name, id):
         super(TorndoHttpRequestCollecter, self).__init__(name, id)
@@ -13,11 +15,6 @@ class TorndoHttpRequestCollecter(DataCollecter):
     def raw_data(self, request):
         panel = {'requests': HttpClientTransNode.get_result(request)}
         return panel
-
-    def render_data(self, request):
-        panel = self.raw_data(request)
-        template = jinja_env.get_template('http_client.html')
-        return template.render(panel=panel)
 
 
 def HTTPConnection_run_callback_hook(func):

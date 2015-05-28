@@ -1,5 +1,6 @@
 # coding: utf8
 import functools
+import json
 import time
 import logging
 from collections import deque
@@ -38,6 +39,8 @@ class DataCollecter(object):
     max_history = 5
     running = False
 
+    template = ""  # 模版名称
+
     def __init__(self, name, id):
         DataCollecter.instances.append(self)
         # record function invoke count and time in all
@@ -74,32 +77,39 @@ class DataCollecter(object):
         """
         pass
 
-    def render_data(self, request):
+    def render_data(self, raw_data):
         """
         渲染统计的数据
         """
-        return self.raw_data(request)
+        template = jinja_env.get_template(self.template)
+        return template.render(panel=raw_data)
 
     def get_panel(self, request):
-        return {'name': self.name, 'id': self.id, 'content': self.render_data(request)}
+        raw_data = self.raw_data(request)
+        return {'name': self.name, 'id': self.id, 'content': self.render_data(raw_data)}
 
     @staticmethod
-    def get_response_panel(handler, response=""):
+    def get_response_raw_data(handler, response):
         """
         展示原始请求结果的pannel, 用于api的统计
         """
-        template = jinja_env.get_template('response.html')
         url = handler.request.uri
         method = handler.request.method
         code = handler._status_code
         time_use = round(handler.request.request_time()*1000, 2)
-        context = {'url': url, 'method': method, 'code': code,
-                   'time_use': time_use, 'response': response}
-        content = template.render(context=context)
+        panel = {'url': url, 'method': method, 'code': code,
+                 'time_use': time_use, 'response': response,
+                 'start_time': handler.request._start_time}
+        return panel
+
+    @staticmethod
+    def get_response_panel(raw_data):
+        template = jinja_env.get_template('response.html')
+        content = template.render(panel=raw_data)
         return {'name': 'response', 'id': 'response', 'content': content}
 
     @classmethod
-    def render(cls, handler, response=None):
+    def render(cls, handler, response=""):
         """
         渲染页面
         """
@@ -109,21 +119,31 @@ class DataCollecter(object):
         TransactionNode.trim_data(request)
         panels = [instance.get_panel(request) for instance in cls.instances]
 
-        panels.append(cls.get_response_panel(handler, response))
+        response_raw_data = cls.get_response_raw_data(handler, response)
+        panels.append(cls.get_response_panel(response_raw_data))
 
         template = jinja_env.get_template('index.html')
         return template.render(panels=panels)
 
-    def get_json_panel(self):
-        return {'name': self.name, 'content': self.raw_data()}
+    def get_json_panel(self, request):
+        return {'name': self.name, 'id': self.id, 'content': self.raw_data(request)}
 
     @classmethod
-    def json(cls):
+    def json(cls, handler, response=""):
+        request = handler.request
+        if not Transaction.get_root(request):
+            return ""
+        TransactionNode.trim_data(request)
+
         result = {}
         for instance in cls.instances:
-            panel = instance.get_json_panel()
-            result[panel['name']] = panel['content']
-        return result
+            panel = instance.get_json_panel(handler.request)
+            result[panel['id']] = panel
+
+        response_panel_raw = cls.get_response_raw_data(handler, response)
+        response_panel_json = {'name': 'response', 'id': 'response', 'content': response_panel_raw}
+        result['response'] = response_panel_json
+        return json.dumps(result)
 
     @classmethod
     def get_history(cls, key):
