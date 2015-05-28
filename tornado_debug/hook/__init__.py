@@ -34,7 +34,7 @@ def regist_wrap_module_func_hook(module_str, attribute, wrapper_factory):
 
 class DataCollecter(object):
 
-    instances = []
+    instances = {}
     history = deque()
     max_history = 5
     running = False
@@ -42,7 +42,7 @@ class DataCollecter(object):
     template = ""  # 模版名称
 
     def __init__(self, name, id):
-        DataCollecter.instances.append(self)
+        DataCollecter.instances[id] = self
         # record function invoke count and time in all
         # eg: self.hooked_func = {"func_name": {'count':1, 'time': 200, chilidren:{}}, ...}
         self.hooked_func = {}
@@ -117,7 +117,7 @@ class DataCollecter(object):
         if not Transaction.get_root(request):
             return ""
         TransactionNode.trim_data(request)
-        panels = [instance.get_panel(request) for instance in cls.instances]
+        panels = [instance.get_panel(request) for instance in cls.instances.values()]
 
         response_raw_data = cls.get_response_raw_data(handler, response)
         panels.append(cls.get_response_panel(response_raw_data))
@@ -136,7 +136,7 @@ class DataCollecter(object):
         TransactionNode.trim_data(request)
 
         result = {}
-        for instance in cls.instances:
+        for instance in cls.instances.values():
             panel = instance.get_json_panel(handler.request)
             result[panel['id']] = panel
 
@@ -162,3 +162,31 @@ class DataCollecter(object):
     def get_content_to_add(cls, history_key):
         template = jinja_env.get_template("handle.html")
         return template.render(history_key=history_key)
+
+    @staticmethod
+    def load_all():
+        """
+        载入所有的子类
+        """
+        from importlib import import_module
+        import_module("tornado_debug.hook.redis_hook", "RedisDataCollecter")
+        import_module("tornado_debug.hook.tornado_hook", "TornadoDataCollecter")
+        import_module("tornado_debug.hook.tornado_httpclient_hook", "TorndoHttpRequestCollecter")
+        import_module("tornado_debug.hook.urllib_hook", "UrlLibDataCollecter")
+
+    @classmethod
+    def render_from_json(cls, json_object):
+        """
+        根据json数据渲染页面，用于server端
+        """
+        cls.load_all()
+        panels = []
+        for collected_data in json_object.values():
+            collector = cls.instances.get(collected_data['id'])
+            if collector:
+                content = collector.render_data(collected_data['content'])
+                panels.append({'name': collector.name, 'id': collector.id, 'content': content})
+            elif collected_data['id'] == 'response':
+                panels.append(cls.get_response_panel(collected_data['content']))
+        template = jinja_env.get_template('index.html')
+        return template.render(panels=panels)

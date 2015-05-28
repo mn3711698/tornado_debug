@@ -163,8 +163,6 @@ def web_request_handler_finish_hook(original):
                 # ajax请求、html和json其他格式的请求、tornado_debug内部请求不做特殊渲染
                 return original(self, chunk)
             else:
-                tornado_data_collecter.time_use = round(self.request.request_time()*1000, 2)
-
                 if chunk:
                     self.write(chunk)
                 origin_response = chunk = ("").join(self._write_buffer)

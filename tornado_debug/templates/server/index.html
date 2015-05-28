@@ -1,0 +1,12 @@
+{% for url, infos in info_list.items() %}
+<h3 class="page-header">{{url}}</h3>
+<ul>
+    {% for info in infos %}
+    <li>
+    <a href="/detail/{{ info.id }}" title="{{info.url}}">
+            [ {{ info.id }} ] [ {{ info.start_time }} ] ({{ info.time_use }})
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+{% endfor %}

@@ -1,5 +1,0 @@
-#! python
-from tornado_debug.main import main
-
-
-main()

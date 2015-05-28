@@ -1,4 +1,0 @@
-#! python
-from tornado_debug.agent import initialize
-
-initialize()
