@@ -11,9 +11,6 @@ setup(
     author_email="lianboshao@sohu-inc.com",
     packages=find_packages(),
     include_package_data=True,
-    package_data={
-        'tornado_debug': ['static/bootstrap/*'],
-    },
     install_requires=[
         'tornado==2.4.1',
         'redis',
