@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 readme = open('README.md').read()
 
 setup(
-    name="tornado-debug",
+    name="tornado_debug",
     version="${version}",
     description="debug tornado web application",
     author="shaolianbo",
