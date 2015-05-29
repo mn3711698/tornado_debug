@@ -66,6 +66,25 @@ def utf8(value):
     return value.encode("utf-8")
 
 
+class RateLimit(object):
+    url_time = {}  # {url: time_to_save_collected_data}
+
+    @classmethod
+    def is_can_recorded(cls, path):
+        prefix = '/'
+        for url_prefix in config.URL_PREFIX:
+            if path.startswith(url_prefix):
+                prefix = url_prefix
+                break
+        now = time.time()
+        time_line = cls.url_time.get(prefix, now)
+        if now >= time_line:
+            cls.url_time[prefix] = now + config.RECORDE_INTERVAL_SECONDS
+            return True
+        else:
+            return False
+
+
 class TornadoDataCollecter(DataCollecter):
 
     def __init__(self, name, id):
@@ -154,9 +173,10 @@ def web_request_handler_finish_hook(original):
                 return original(self, chunk)
             # server mode only response the debug data
             if config.SERVER_MODE:
-                result = utf8(DataCollecter.json(self))
-                if result:
-                    store_debug_data(result)
+                if RateLimit.is_can_recorded(self.request.path):
+                    result = utf8(DataCollecter.json(self))
+                    if result:
+                        store_debug_data(result)
                 return original(self, chunk)
 
             if is_ajax_request(self.request) or not (is_html_response(self) or is_json_response(self)):

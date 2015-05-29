@@ -3,9 +3,9 @@
 <ul>
     {% for info in infos %}
     <li>
-    <a href="/detail/{{ info.id }}" title="{{info.url}}">
-            [ {{ info.id }} ] [ {{ info.start_time }} ] ({{ info.time_use }})
-        </a>
+    <a href="/detail/{{ info.id }}" title="{{info.start_time}}">
+            [ {{ info.id }} ] [ {{ info.url }} ] ({{ info.time_use }})
+    </a>
     </li>
     {% endfor %}
 </ul>

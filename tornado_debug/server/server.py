@@ -5,6 +5,7 @@ import logging
 
 from jinja2 import Environment, PackageLoader
 
+from tornado_debug import config
 from tornado_debug.hook import DataCollecter
 from tornado_debug.hook.tornado_urls import urls as extra_urls
 from tornado_debug.server.model import CollectedData
@@ -44,7 +45,7 @@ def run():
         (r"/list", ListHandler),
         (r"/detail/(\d+)", DetailHandler),
     ] + extra_urls)
-    application.listen(8888)
+    application.listen(config.SERVER_PORT)
     tornado.ioloop.IOLoop.instance().start()
 
 

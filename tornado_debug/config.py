@@ -6,7 +6,10 @@ STORAGE_URL = "http://127.0.0.1:8888/store"
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = '6379'
 
+SERVER_PORT = 8888
+
 URL_PREFIX = ["/", "/n/", "/p/", "/ic/index", "/cl/", "/cr/", "/c/", "/api/", "/f/"]
+RECORDE_INTERVAL_SECONDS = 60
 
 
 def _prepare():
