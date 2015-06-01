@@ -47,6 +47,8 @@ class CollectedData(object):
         for key in url_keys:
             ids_scores = client.zrangebyscore(key, min_time, max_time, withscores=True)
             info_keys = ["info:%s" % id for id, _ in ids_scores]
+            if not info_keys:
+                continue
             infos = client.mget(info_keys)
             times_urls = [info.split('#', 1) if info else info for info in infos]
 

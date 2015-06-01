@@ -1,8 +1,5 @@
 # coding:utf8
-import collections
 from .transaction import TransactionNode, SyncTransactionContext
-
-HttpRequest = collections.namedtuple('HttpRequest', ['url', 'code', 'time'])
 
 
 class HttpClientTransNode(TransactionNode):
@@ -13,7 +10,7 @@ class HttpClientTransNode(TransactionNode):
         return super(HttpClientTransNode, self).__init__(name)
 
     def add_request(self, url, code, time):
-        self.private_requests.append(HttpRequest(url, code, time))
+        self.private_requests.append(dict(url=url, code=code, time=time))
 
     def classify(self, request):
         cls = HttpClientTransNode
