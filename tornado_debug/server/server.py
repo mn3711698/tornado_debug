@@ -23,9 +23,15 @@ class StoreHandler(tornado.web.RequestHandler):
 
 class ListHandler(tornado.web.RequestHandler):
     def get(self):
-        info_list = CollectedData.get_info_list(24*3600)
-        template = jinja_env.get_template("server/index.html")
+        info_list = CollectedData.get_info_list()
+        template = jinja_env.get_template("server/list.html")
         self.write(template.render(info_list=info_list))
+
+
+class IndexHandler(tornado.web.RequestHandler):
+    def get(self):
+        template = jinja_env.get_template("server/index.html")
+        self.write(template.render())
 
 
 class DetailHandler(tornado.web.RequestHandler):
@@ -36,14 +42,24 @@ class DetailHandler(tornado.web.RequestHandler):
         self.write(DataCollecter.render_from_json(data))
 
 
+# API HANDLERS
+class ListApiHander(tornado.web.RequestHandler):
+    def get(self):
+        url = self.get_arguments('url')
+        infos = CollectedData.get_info_list(url)
+        self.write(infos)
+
+
 def run():
     from tornado.options import parse_command_line
     parse_command_line()
 
     application = tornado.web.Application([
+        (r"/", IndexHandler),
         (r"/store", StoreHandler),
         (r"/list", ListHandler),
         (r"/detail/(\d+)", DetailHandler),
+        (r"/api/list", ListApiHander),
     ] + extra_urls)
     application.listen(config.SERVER_PORT)
     tornado.ioloop.IOLoop.instance().start()

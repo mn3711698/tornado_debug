@@ -39,10 +39,13 @@ class CollectedData(object):
         return True
 
     @staticmethod
-    def get_info_list(seconds_ago):
+    def get_info_list(urls=[], seconds_ago=3*3600):
         max_time = time()
         min_time = time() - seconds_ago
-        url_keys = client.keys('url:*')
+        if urls:
+            url_keys = ['url:%s' % url for url in urls]
+        else:
+            url_keys = client.keys('url:*')
         result = {}
         for key in url_keys:
             ids_scores = client.zrangebyscore(key, min_time, max_time, withscores=True)
