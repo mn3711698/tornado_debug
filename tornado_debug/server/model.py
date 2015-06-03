@@ -26,7 +26,7 @@ class CollectedData(object):
         start_time = response['content']['start_time']
         time_use = response['content']['time_use']
         id = client.incr('debug:id')
-        ex_seconds = 24*3600
+        ex_seconds = 8*24*3600  # 过期时间调整为8天，这样可以和一周前的同一天进行比较
         last_time = time() - ex_seconds
 
         info = "%s#%s" % (time_use, url)
