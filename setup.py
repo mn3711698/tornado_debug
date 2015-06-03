@@ -15,6 +15,7 @@ setup(
         'tornado==2.4.1',
         'redis',
         'jinja2',
+        'six'
     ],
     entry_points={
         'console_scripts': [
