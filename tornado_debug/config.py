@@ -28,7 +28,7 @@ def _prepare():
                 if name in ('SERVER_PORT', 'RECORDE_INTERVAL_SECONDS'):
                     value = int(value)
                 if name == 'URL_PREFIX':
-                    value = [url.encode('utf8') for url in json.loads(value)]
+                    value = json.loads(value)
                 global_settings[name] = value
 
     global URL_PREFIX
