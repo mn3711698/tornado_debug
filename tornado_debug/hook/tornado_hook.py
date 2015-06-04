@@ -173,7 +173,8 @@ def web_request_handler_finish_hook(original):
                 return original(self, chunk)
             # server mode only response the debug data
             if config.SERVER_MODE:
-                if RateLimit.is_can_recorded(self.request.path):
+                request_time = self.request.request_time()*1000
+                if (request_time > 100) or RateLimit.is_can_recorded(self.request.path):
                     result = utf8(DataCollecter.json(self))
                     if result:
                         store_debug_data(result)
