@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tonado run result</title>
+    <link rel="stylesheet" href="/_tnDebug_/static/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="/_tnDebug_/static/tnDebug/tnDebug.css" type="text/css">
     <link rel="stylesheet" href="/_tnDebug_/static/jquery/jquery.jsonview.css" />
   </head>
@@ -15,11 +16,27 @@
             <h3>Debug Result</h3>
         </div>
         <div class="panelsContent">
-            <div id="container" class="panels"></div>      
+            <div id='panel' class="panels">
+                <div id="container"></div>      
+                <br></br>
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownUrls" data-toggle="dropdown" aria-expanded="false">
+                        纵向比较的url: <span></span>
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownUrls">
+                        {% for url in urls %}
+                        <li role="presentation"><a role="menuitem" tabindex="-1" href="#">{{ url }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="container2"></div>      
+            </div>
         </div>
      </div>
     </div>
     <script src="/_tnDebug_/static/jquery/jquery.min.js"></script>
+    <script src="/_tnDebug_/static/bootstrap/bootstrap.min.js"></script> 
     <script src="/_tnDebug_/static/highcharts/highcharts.js"></script>
     <script src="/_tnDebug_/static/tnDebug/server_index.js"></script>
   </body>

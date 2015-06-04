@@ -1,4 +1,4 @@
-$($.get('/api/list', function (dataObj){
+function drawCharts(chartsId, chartsTitle, dataObj){
     var series=[];
 
     for(var key in dataObj){
@@ -7,20 +7,20 @@ $($.get('/api/list', function (dataObj){
         for(var i in points){
             var point = {};
             data = points[i];
-            point['x'] = parseFloat(data.start_time*1000);
-            point['y'] = parseFloat(data.time_use);
-            point['url'] = data.url.split('?')[0];
-            point['id'] = data.id;
+            point.x = parseFloat(data.start_time*1000);
+            point.y = parseFloat(data.time_use);
+            point.url = data.url.split('?')[0];
+            point.id = data.id;
             item.data.push(point);
         }
         series.push(item);
-    };
+    }
     Highcharts.setOptions({
         global: {
             timezoneOffset: -8 * 60
         }
     });
-    $('#container').highcharts({
+    $('#'+chartsId).highcharts({
         rangeSelector: {
             allButtonsEnabled: true
         },
@@ -42,7 +42,7 @@ $($.get('/api/list', function (dataObj){
             zoomType: 'x'
         },
         title: {
-            text: 'request time'
+            text: chartsTitle
         },
         xAxis: {
             type: 'datetime',
@@ -57,4 +57,27 @@ $($.get('/api/list', function (dataObj){
         },
         series: series
     });
-}))
+}
+
+$(
+function(){
+    $.get('/api/list', function(dataObj){
+        drawCharts('container', '横向访问速度曲线', dataObj);
+    });
+
+    function drawCompareCharts(url){
+        $("#dropdownUrls span").first().text(url);
+        var url_encode = encodeURIComponent(url);
+        $.get('/api/list/compare?url='+url_encode, function(data){
+            drawCharts('container2', '纵向访问时间曲线',data);
+        });
+    }
+    
+    $(".dropdown ul li").click(function(){
+        var url = $(this).text();
+        drawCompareCharts(url);
+    });
+
+    drawCompareCharts("/n/");
+}
+);

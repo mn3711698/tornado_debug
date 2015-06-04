@@ -39,18 +39,18 @@ class CollectedData(object):
         return True
 
     @staticmethod
-    def get_info_list(urls=[], seconds_ago=3*3600):
-        max_time = time()
-        min_time = time() - seconds_ago
+    def get_info_list(max_time, min_time, urls=[]):
         if urls:
             url_keys = ['url:%s' % url for url in urls]
         else:
             url_keys = client.keys('url:*')
         result = {}
         for key in url_keys:
+            url = key.split(':')[-1]
             ids_scores = client.zrangebyscore(key, min_time, max_time, withscores=True)
             info_keys = ["info:%s" % id for id, _ in ids_scores]
             if not info_keys:
+                result[url] = []
                 continue
             infos = client.mget(info_keys)
             times_urls = [info.split('#', 1) if info else info for info in infos]
@@ -66,7 +66,7 @@ class CollectedData(object):
                     url=time_url[1]
                 )
                 infos.append(info)
-            result[key] = infos
+            result[url] = infos
         return result
 
     @staticmethod

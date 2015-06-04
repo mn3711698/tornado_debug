@@ -33,7 +33,7 @@
 }
 
 #tnDebug .panelsContent .panels {
-    /*height: 100%;*/
+    height: 100%;
     overflow: auto;
     display: block;
     padding: 0 10px 0 0;
