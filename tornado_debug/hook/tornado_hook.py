@@ -160,6 +160,9 @@ def web_application_call_hook(original):
     """
     @functools.wraps(original)
     def wrapper(self, request):
+        if request.method in config.FORBIDDEN_METHODS:
+            request.connection.close()
+            return
         Transaction.start(request)
         return original(self, request)
     return wrapper

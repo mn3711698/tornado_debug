@@ -14,6 +14,7 @@ RECORDE_INTERVAL_SECONDS = 60
 # agent config
 SERVER_MODE = os.environ.get('TOR_DEBUG_SERVER_MODE') == '1'
 SERVER_DOMAIN = ''
+FORBIDDEN_METHODS = ['POST']
 
 
 def _prepare():
@@ -27,7 +28,7 @@ def _prepare():
             if name in global_settings:
                 if name in ('SERVER_PORT', 'RECORDE_INTERVAL_SECONDS'):
                     value = int(value)
-                if name == 'URL_PREFIX':
+                if name in ('URL_PREFIX', 'FORBIDDEN_METHODS'):
                     value = json.loads(value)
                 global_settings[name] = value
 
