@@ -15,6 +15,7 @@ RECORDE_INTERVAL_SECONDS = 60
 SERVER_MODE = os.environ.get('TOR_DEBUG_SERVER_MODE') == '1'
 SERVER_DOMAIN = ''
 FORBIDDEN_METHODS = ['POST']
+ABNORMAL_REQUEST_TIME = 1000
 
 
 def _prepare():
@@ -26,7 +27,7 @@ def _prepare():
         for name, value in config.items('TORNADO_DEBUG'):
             name = name.upper()
             if name in global_settings:
-                if name in ('SERVER_PORT', 'RECORDE_INTERVAL_SECONDS'):
+                if name in ('SERVER_PORT', 'RECORDE_INTERVAL_SECONDS', 'ABNORMAL_REQUEST_TIME'):
                     value = int(value)
                 if name in ('URL_PREFIX', 'FORBIDDEN_METHODS'):
                     value = json.loads(value)

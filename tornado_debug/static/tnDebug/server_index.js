@@ -3,7 +3,12 @@ function drawCharts(chartsId, chartsTitle, dataObj){
 
     for(var key in dataObj){
         var item = {name: key, data:[]};
-        var points = dataObj[key];
+        var points = [];
+        if(dataObj[key].length > 1500){
+            points = dataObj[key].splice(-1500);
+        }else{
+            points = dataObj[key];
+        }
         for(var i in points){
             var point = {};
             data = points[i];
