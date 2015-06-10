@@ -62,6 +62,13 @@ class ListApiHander(tornado.web.RequestHandler):
 
 
 class CompareListApiHander(ListApiHander):
+
+    def _make_same_day(self, infos, days):
+        seconds = days*3600*24
+        for info in infos:
+            info['start_time'] += seconds
+        return infos
+
     def get(self):
         url = self.get_argument('url')
         if not url:
@@ -74,11 +81,11 @@ class CompareListApiHander(ListApiHander):
 
         yesterday = now - timedelta(days=1)
         infos = self.get_data_of_the_day(yesterday, [url])
-        result[yesterday.strftime("%Y-%m-%d")] = infos[url]
+        result[yesterday.strftime("%Y-%m-%d")] = self._make_same_day(infos[url], 1)
 
         last_week = now - timedelta(days=7)
         infos = self.get_data_of_the_day(last_week, [url])
-        result[last_week.strftime("%Y-%m-%d")] = infos[url]
+        result[last_week.strftime("%Y-%m-%d")] = self._make_same_day(infos[url], 7)
 
         self.write(result)
 
