@@ -38,14 +38,14 @@ def SimpleAsyncHTTPClient_fetch_hook(func):
     fetch 之前在request上存储上下文节点
     """
     @functools.wraps(func)
-    def wrapper(self, request, *args, **kwargs):
+    def wrapper(self, request, callback, **kwargs):
         with HttpClientTransContext('tornado.simple_httpclient.SimpleAsyncHTTPClient.fetch') as context:
             if context:
                 from tornado.httpclient import HTTPRequest
                 if not isinstance(request, HTTPRequest):
                     request = HTTPRequest(url=request, **kwargs)
                 request._td_httpclient_node = context
-            return func(self, request, *args, **kwargs)
+            return func(self, request, callback, **kwargs)
     return wrapper
 
 
