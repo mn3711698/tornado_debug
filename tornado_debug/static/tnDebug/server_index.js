@@ -35,7 +35,8 @@ function drawCharts(chartsId, chartsTitle, dataObj){
                 point: {
                     events: {
                         click: function () {
-                            location.href = '/detail/' + this.options.id;
+                            var url = '/detail/' + this.options.id;
+                            window.open(url);
                         }
                     }
                 },
