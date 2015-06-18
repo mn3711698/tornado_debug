@@ -36,7 +36,7 @@ function init(){
                         $('#redis-json').JSONView(JSON.parse(args));
                         return $("#redis-json").html();
                     }
-                    rightTable.find('tr:last-child th:first-child').tooltip({'placement': 'bottom', 'title': getTitle, 'template': tooltip, 'html': true});
+                    rightTable.find('tr:last-child th:first-child').tooltip({'placement': 'bottom', 'title': getTitle, 'template': tooltip, 'html': true, 'trigger': 'click'});
                 });
 
             });
