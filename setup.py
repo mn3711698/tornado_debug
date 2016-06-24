@@ -8,7 +8,7 @@ setup(
     version="${version}",
     description="debug tornado web application",
     author="shaolianbo",
-    author_email="lianboshao@sohu-inc.com",
+    author_email="",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
